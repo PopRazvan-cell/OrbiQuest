@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIGNAL LOST — Escape Room Astronomic</title>
+<style>
+ 
+  :root{
+    --void:#0a0e14;          /* fundalul vidului */
+    --void-2:#111823;        /* panouri */
+    --panel:#0d141d;
+    --hull:#1a2530;          /* margini metalice */
+    --amber:#ffb648;         /* fosfor chihlimbariu — date live */
+    --amber-dim:#8a6a30;
+    --cyan:#4fd6e8;          /* semnale, ținte */
+    --cyan-dim:#2a6f78;
+    --ok:#7ee787;            /* succes */
+    --err:#ff6b6b;           /* eroare */
+    --ink:#c9d6e2;           /* text corp */
+    --ink-dim:#6b7d8f;       /* text secundar */
+    --grid:rgba(79,214,232,.06);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:
+      radial-gradient(ellipse at 50% -10%, #16202c 0%, var(--void) 55%),
+      var(--void);
+    color:var(--ink);
+    font-family:'DM Mono',ui-monospace,'Cascadia Code','Courier New',monospace;
+    line-height:1.5;
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* grilă subtilă de HUD peste tot */
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:
+      linear-gradient(var(--grid) 1px,transparent 1px),
+      linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:44px 44px;
+    mask-image:radial-gradient(ellipse at 50% 30%,#000 40%,transparent 85%);
+  }
+  /* scanline foarte discret */
+  body::after{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;
+    background:repeating-linear-gradient(0deg,rgba(0,0,0,.14) 0 2px,transparent 2px 4px);
+    opacity:.35;mix-blend-mode:multiply;
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important}
+  }
+
+  .wrap{position:relative;z-index:1;max-width:960px;margin:0 auto;padding:24px 18px 80px}
+
+  /* ---------- HEADER / STATUS BAR ---------- */
+  header{
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    border:1px solid var(--hull);border-radius:10px;
+    background:linear-gradient(180deg,var(--void-2),var(--panel));
+    padding:12px 16px;margin-bottom:20px;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.02), 0 8px 30px rgba(0,0,0,.4);
+  }
+  .logo{display:flex;flex-direction:column;line-height:1.05}
+  .logo b{
+    font-family:'Oswald','Arial Narrow',sans-serif;font-weight:600;
+    letter-spacing:.14em;font-size:19px;color:var(--amber);
+    text-shadow:0 0 14px rgba(255,182,72,.35);
+  }
+  .logo span{font-size:10px;letter-spacing:.32em;color:var(--ink-dim);text-transform:uppercase}
+  .status{margin-left:auto;display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+  .stat{display:flex;flex-direction:column;align-items:flex-end}
+  .stat .k{font-size:9px;letter-spacing:.22em;color:var(--ink-dim);text-transform:uppercase}
+  .stat .v{font-size:15px;color:var(--cyan);letter-spacing:.05em}
+  .stat .v.crit{color:var(--err)}
+  .pulse{width:9px;height:9px;border-radius:50%;background:var(--err);box-shadow:0 0 10px var(--err);animation:pulse 1.4s infinite}
+  @keyframes pulse{50%{opacity:.25}}
+
+  /* ---------- INTRO ---------- */
+  .brief{
+    border:1px solid var(--hull);border-left:3px solid var(--amber);
+    background:var(--panel);border-radius:8px;padding:20px 22px;margin-bottom:22px;
+  }
+  .brief h1{
+    font-family:'Oswald','Arial Narrow',sans-serif;font-weight:600;
+    font-size:clamp(26px,5vw,40px);letter-spacing:.06em;color:var(--ink);
+    margin-bottom:6px;line-height:1;
+  }
+  .brief h1 em{color:var(--amber);font-style:normal;text-shadow:0 0 20px rgba(255,182,72,.4)}
+  .brief .sub{color:var(--ink-dim);font-size:12px;letter-spacing:.2em;text-transform:uppercase;margin-bottom:14px}
+  .brief p{color:var(--ink);font-size:14px;margin-bottom:10px;max-width:66ch}
+  .brief p.note{color:var(--ink-dim);font-size:12.5px}
+
+  /* ---------- PROGRESS RAIL ---------- */
+  .rail{display:flex;gap:10px;margin:0 0 24px}
+  .node{
+    flex:1;border:1px solid var(--hull);border-radius:8px;padding:12px 14px;
+    background:var(--panel);position:relative;overflow:hidden;transition:.4s;
+  }
+  .node .idx{font-size:10px;letter-spacing:.2em;color:var(--ink-dim)}
+  .node .nm{font-family:'Oswald',sans-serif;font-size:14px;letter-spacing:.05em;margin-top:2px;color:var(--ink-dim)}
+  .node.active{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber),0 0 24px rgba(255,182,72,.15)}
+  .node.active .nm{color:var(--amber)}
+  .node.done{border-color:var(--ok)}
+  .node.done .nm{color:var(--ok)}
+  .node.done::after{content:"✓";position:absolute;top:8px;right:10px;color:var(--ok)}
+  .node.locked{opacity:.45}
+
+  /* ---------- ROOM CARDS ---------- */
+  .room{
+    display:none;border:1px solid var(--hull);border-radius:12px;
+    background:linear-gradient(180deg,var(--void-2),var(--panel));
+    padding:22px;margin-bottom:20px;
+    box-shadow:0 20px 50px rgba(0,0,0,.45);
+    animation:rise .5s ease both;
+  }
+  .room.show{display:block}
+  @keyframes rise{from{opacity:0;transform:translateY(14px)}}
+  .room h2{
+    font-family:'Oswald',sans-serif;font-weight:600;font-size:24px;letter-spacing:.05em;
+    color:var(--amber);margin-bottom:2px;
+  }
+  .room .rlead{color:var(--ink-dim);font-size:12px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:16px}
+  .room .story{color:var(--ink);font-size:13.5px;margin-bottom:18px;max-width:70ch;border-left:2px solid var(--cyan-dim);padding-left:12px}
+
+  .grid2{display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start}
+  @media(max-width:720px){.grid2{grid-template-columns:1fr}}
+
+  .stage{
+    border:1px solid var(--hull);border-radius:10px;background:#070b11;
+    position:relative;overflow:hidden;
+  }
+  canvas{display:block;width:100%;height:auto}
+  .readout{
+    font-family:'DM Mono',monospace;background:#070b11;border:1px solid var(--hull);
+    border-radius:10px;padding:14px 16px;
+  }
+  .readout h3{font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:12px}
+  .dial{margin-bottom:16px}
+  .dial label{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-dim);letter-spacing:.08em;margin-bottom:6px}
+  .dial label b{color:var(--amber);font-size:13px}
+  input[type=range]{
+    -webkit-appearance:none;width:100%;height:4px;border-radius:3px;
+    background:linear-gradient(90deg,var(--amber-dim),var(--amber));outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:18px;height:18px;border-radius:50%;
+    background:var(--amber);border:2px solid #070b11;cursor:pointer;
+    box-shadow:0 0 10px rgba(255,182,72,.6);
+  }
+  input[type=range]::-moz-range-thumb{
+    width:18px;height:18px;border-radius:50%;background:var(--amber);
+    border:2px solid #070b11;cursor:pointer;box-shadow:0 0 10px rgba(255,182,72,.6);
+  }
+  .metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 14px}
+  .metric{border:1px solid var(--hull);border-radius:6px;padding:8px 10px}
+  .metric .k{font-size:9px;letter-spacing:.16em;color:var(--ink-dim);text-transform:uppercase}
+  .metric .v{font-size:16px;color:var(--cyan)}
+  .metric .v.good{color:var(--ok)}
+
+  .btn{
+    font-family:'Oswald',sans-serif;letter-spacing:.1em;font-size:13px;
+    background:var(--amber);color:#0a0e14;border:none;border-radius:7px;
+    padding:11px 16px;cursor:pointer;width:100%;font-weight:600;
+    transition:.2s;text-transform:uppercase;
+  }
+  .btn:hover{filter:brightness(1.12);box-shadow:0 0 20px rgba(255,182,72,.4)}
+  .btn:active{transform:translateY(1px)}
+  .btn.ghost{background:transparent;color:var(--cyan);border:1px solid var(--cyan-dim)}
+  .btn.ghost:hover{background:rgba(79,214,232,.08);box-shadow:none}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+
+  .feedback{margin-top:12px;font-size:12.5px;min-height:20px;letter-spacing:.03em}
+  .feedback.ok{color:var(--ok)}
+  .feedback.err{color:var(--err)}
+
+  .codeout{
+    margin-top:14px;border:1px dashed var(--amber-dim);border-radius:8px;
+    padding:12px;text-align:center;display:none;
+  }
+  .codeout.show{display:block;animation:rise .4s}
+  .codeout .lab{font-size:10px;letter-spacing:.24em;color:var(--ink-dim);text-transform:uppercase}
+  .codeout .frag{font-family:'Oswald',sans-serif;font-size:30px;letter-spacing:.3em;color:var(--amber);text-shadow:0 0 20px rgba(255,182,72,.5)}
+
+  /* hint / formula */
+  details{margin-top:14px;border:1px solid var(--hull);border-radius:8px;background:var(--panel)}
+  summary{cursor:pointer;padding:10px 14px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:"▸ ";color:var(--cyan-dim)}
+  details[open] summary::before{content:"▾ "}
+  details .body{padding:0 14px 14px;font-size:12.5px;color:var(--ink-dim)}
+  details .body code{color:var(--amber);background:rgba(255,182,72,.08);padding:1px 5px;border-radius:3px}
+  .kbd{color:var(--ink);background:var(--hull);padding:2px 7px;border-radius:4px;font-size:12px}
+
+  /* ---------- FINAL LOCK ---------- */
+  #final .lockrow{display:flex;gap:10px;justify-content:center;margin:18px 0;flex-wrap:wrap}
+  .digit{
+    width:64px;height:80px;background:#070b11;border:1px solid var(--hull);
+    border-radius:8px;display:flex;align-items:center;justify-content:center;
+    font-family:'Oswald',sans-serif;font-size:40px;color:var(--ink-dim);
+    position:relative;
+  }
+  .digit .cap{position:absolute;top:6px;font-size:9px;letter-spacing:.1em;color:var(--ink-dim)}
+  .digit.filled{color:var(--amber);border-color:var(--amber-dim);text-shadow:0 0 16px rgba(255,182,72,.5)}
+  #final input{
+    width:100%;max-width:320px;margin:0 auto;display:block;text-align:center;
+    background:#070b11;border:1px solid var(--hull);border-radius:8px;color:var(--amber);
+    font-family:'Oswald',sans-serif;font-size:28px;letter-spacing:.4em;padding:12px;
+  }
+  .win{text-align:center;padding:30px 10px;display:none}
+  .win.show{display:block;animation:rise .6s}
+  .win h2{font-size:34px;color:var(--ok);text-shadow:0 0 30px rgba(126,231,135,.4)}
+  .win p{color:var(--ink);margin-top:10px}
+
+  footer{text-align:center;color:var(--ink-dim);font-size:10.5px;letter-spacing:.12em;margin-top:30px;text-transform:uppercase}
+
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo">
+      <b>ARV · KEPLER-9</b>
+      <span>Autonomous Research Vessel</span>
+    </div>
+    <div class="status">
+      <div class="stat"><span class="k">Oxigen</span><span class="v" id="o2">14:00</span></div>
+      <div class="stat"><span class="k">Sisteme</span><span class="v crit" id="sysStat">AVARIATE</span></div>
+      <div class="stat"><span class="k">Coduri</span><span class="v" id="codeCount">0 / 3</span></div>
+      <span class="pulse" title="Alertă"></span>
+    </div>
+  </header>
+
+  <!-- INTRO -->
+  <section class="brief" id="brief">
+    <div class="sub">Jurnal de bord · Ora 03:12 · La 41 UA de Soare</div>
+    <h1>SEMNAL <em>PIERDUT</em></h1>
+    <p>O furtună de particule a scos din funcțiune sistemul de navigație al navei Kepler-9.
+       Computerul principal e blocat și cere un cod de repornire de <b>3 cifre</b> — dar cele
+       trei module de siguranță s-au închis fiecare în spatele unui instrument științific defect.</p>
+    <p>Repari fiecare instrument, îl folosești corect și el îți dă o cifră. Trei cifre → repornești
+       nava → te întorci acasă. Rezervorul de oxigen îți dă 14 minute; cronometrul pornește când intri.</p>
+    <p class="note">⚠ Nu ai nevoie de internet, de conturi sau de nimic altceva. Doar de fizică și de calm.</p>
+    <button class="btn" id="startBtn" style="max-width:260px;margin-top:8px">▶ Inițiază secvența</button>
+  </section>
+
+  <!-- PROGRESS -->
+  <div class="rail hidden" id="rail">
+    <div class="node active" data-node="0"><div class="idx">MODUL 01</div><div class="nm">Gravitație</div></div>
+    <div class="node locked" data-node="1"><div class="idx">MODUL 02</div><div class="nm">Spectru</div></div>
+    <div class="node locked" data-node="2"><div class="idx">MODUL 03</div><div class="nm">Paralaxă</div></div>
+    <div class="node locked" data-node="3"><div class="idx">CORE</div><div class="nm">Repornire</div></div>
+  </div>
+
+  <!-- ============ ROOM 1 : GRAVITY ============ -->
+  <section class="room" id="room1">
+    <h2>Modul 01 — Captura orbitală</h2>
+    <div class="rlead">Instrument: propulsor de manevră · Fizică: mecanică orbitală</div>
+    <p class="story">Sonda de recunoaștere plutește în derivă spre planeta pitică Elara.
+       Ca s-o salvezi, trebuie s-o pui pe o <b>orbită circulară stabilă</b>. Reglezi viteza
+       de injecție. Prea mică → cade și se prăbușește; prea mare → scapă în spațiu. Există o
+       singură viteză corectă pentru raza aleasă.</p>
+
+    <div class="grid2">
+      <div class="stage"><canvas id="cv1" width="560" height="420"></canvas></div>
+      <div class="readout">
+        <h3>Consolă propulsor</h3>
+
+        <div class="dial">
+          <label>Raza orbitei <b><span id="r1v">200</span> Mm</b></label>
+          <input type="range" id="r1" min="120" max="260" value="200" step="5">
+        </div>
+        <div class="dial">
+          <label>Viteză injecție <b><span id="v1v">1.50</span> km/s</b></label>
+          <input type="range" id="v1" min="1.50" max="6.00" value="1.50" step="0.01">
+        </div>
+
+        <div class="metrics">
+          <div class="metric"><div class="k">Status orbită</div><div class="v" id="vneed">—</div></div>
+          <div class="metric"><div class="k">Excentricitate</div><div class="v" id="ecc">—</div></div>
+        </div>
+
+        <button class="btn ghost" id="launch1" style="margin-bottom:8px">↻ Lansează sonda</button>
+        <button class="btn" id="check1" disabled>Blochează orbita</button>
+        <div class="feedback" id="fb1"></div>
+
+        <div class="codeout" id="code1">
+          <div class="lab">Cod recuperat · poziția 1</div>
+          <div class="frag" id="frag1">?</div>
+        </div>
+
+        <details>
+          <summary>Fișă tehnică</summary>
+          <div class="body">
+            Pentru orbită circulară forța gravitațională = forța centripetă:<br>
+            <code>GMm/r² = mv²/r</code> ⟹ <code>v = √(GM/r)</code><br><br>
+            Aici <code>GM = 1.843×10¹⁵ m³/s²</code> (parametrul planetei Elara).
+            Introdu raza în metri (1 Mm = 10⁶ m), calculează v în m/s, apoi împarte la 1000 pentru km/s.
+            Reglează sliderul până <span class="kbd">v injecție</span> = <span class="kbd">v necesară</span>.
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ROOM 2 : SPECTRUM / REDSHIFT ============ -->
+  <section class="room" id="room2">
+    <h2>Modul 02 — Deriva spectrală</h2>
+    <div class="rlead">Instrument: spectrometru · Fizică: efect Doppler (redshift)</div>
+    <p class="story">Spectrometrul a prins lumina unei galaxii îndepărtate. Linia hidrogenului,
+       care în laborator stă la <b>656,3 nm</b>, apare deplasată spre roșu. Aliniază cursorul pe
+       linia observată, citește lungimea de undă și calculează <b>cât de repede se îndepărtează
+       galaxia</b>. Un singur calcul.</p>
+
+    <div class="grid2">
+      <div class="stage"><canvas id="cv2" width="560" height="420"></canvas></div>
+      <div class="readout">
+        <h3>Consolă spectrometru</h3>
+
+        <div class="dial">
+          <label>Cursor lungime de undă <b><span id="w2v">656.3</span> nm</b></label>
+          <input type="range" id="w2" min="656.3" max="720" value="656.3" step="0.1">
+        </div>
+
+        <div class="metrics">
+          <div class="metric"><div class="k">λ laborator</div><div class="v">656.3 nm</div></div>
+          <div class="metric"><div class="k">λ observat</div><div class="v" id="lobs">— nm</div></div>
+        </div>
+
+        <p style="font-size:11px;color:var(--ink-dim);margin-bottom:6px;letter-spacing:.06em">
+          Aliniază cursorul pe linia roșie, apoi introdu viteza galaxiei (km/s, întreg):</p>
+        <input id="dist2" inputmode="numeric" placeholder="ex: 5000"
+          style="width:100%;background:#070b11;border:1px solid var(--hull);border-radius:7px;color:var(--amber);font-family:'Oswald',sans-serif;font-size:20px;letter-spacing:.1em;padding:10px;text-align:center;margin-bottom:10px">
+
+        <button class="btn" id="check2">Confirmă viteza</button>
+        <div class="feedback" id="fb2"></div>
+
+        <div class="codeout" id="code2">
+          <div class="lab">Cod recuperat · poziția 2</div>
+          <div class="frag" id="frag2">?</div>
+        </div>
+
+        <details>
+          <summary>Fișă tehnică</summary>
+          <div class="body">
+            Deplasarea relativă (redshift): <code>z = (λ_obs − λ_lab) / λ_lab</code><br>
+            Viteza galaxiei: <code>v = z · c</code>, cu <code>c = 300 000 km/s</code>.<br>
+            Atât. Ex: λ_obs = 670 nm ⟹ z = 13,7/656,3 = 0,0209 ⟹ v ≈ 6 260 km/s.
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ROOM 3 : PARALLAX ============ -->
+  <section class="room" id="room3">
+    <h2>Modul 03 — Triangulația stelară</h2>
+    <div class="rlead">Instrument: astrometru · Fizică: paralaxă trigonometrică</div>
+    <p class="story">Ultimul modul are nevoie de o reper de navigație: distanța până la steaua
+       Vega-B. O măsori prin paralaxă — observi steaua din două poziții opuse ale orbitei
+       Pământului (la 6 luni distanță) și vezi cât pare că se deplasează pe cerul de fundal.
+       Comută între cele două poziții, citește deplasarea unghiulară, apoi calculează distanța.</p>
+
+    <div class="grid2">
+      <div class="stage"><canvas id="cv3" width="560" height="420"></canvas></div>
+      <div class="readout">
+        <h3>Consolă astrometru</h3>
+
+        <button class="btn ghost" id="toggle3" style="margin-bottom:12px">⇄ Comută: IANUARIE</button>
+
+        <div class="metrics">
+          <div class="metric"><div class="k">Poziție observ.</div><div class="v" id="epoch">Ianuarie</div></div>
+          <div class="metric"><div class="k">Deplasare totală</div><div class="v" id="shift">0.050 ″</div></div>
+        </div>
+
+        <p style="font-size:11px;color:var(--ink-dim);margin-bottom:6px;letter-spacing:.06em">
+          Deplasarea totală (2p) e afișată. Calculează distanța și introdu-o în <b>parseci</b> (o zecimală):</p>
+        <input id="dist3" inputmode="decimal" placeholder="ex: 12.5"
+          style="width:100%;background:#070b11;border:1px solid var(--hull);border-radius:7px;color:var(--amber);font-family:'Oswald',sans-serif;font-size:20px;letter-spacing:.1em;padding:10px;text-align:center;margin-bottom:10px">
+
+        <button class="btn" id="check3">Confirmă distanța</button>
+        <div class="feedback" id="fb3"></div>
+
+        <div class="codeout" id="code3">
+          <div class="lab">Cod recuperat · poziția 3</div>
+          <div class="frag" id="frag3">?</div>
+        </div>
+
+        <details>
+          <summary>Fișă tehnică</summary>
+          <div class="body">
+            Unghiul de paralaxă <code>p</code> e JUMĂTATE din deplasarea totală observată între cele
+            două poziții: <code>p = deplasare / 2</code> (în secunde de arc).<br>
+            Distanța: <code>d [parseci] = 1 / p[″]</code>.<br>
+            Ex: deplasare 0,050″ ⟹ p = 0,025″ ⟹ d = 40 pc.
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FINAL ============ -->
+  <section class="room" id="final">
+    <h2>Core — Secvență de repornire</h2>
+    <div class="rlead">Introdu codul de 3 cifre în ordinea modulelor</div>
+    <p class="story">Fiecare modul reparat ți-a dat o cifră. Computerul principal așteaptă
+       codul complet. O singură încercare bună te trimite acasă.</p>
+
+    <div class="lockrow">
+      <div class="digit" id="d0"><span class="cap">MOD 01</span>?</div>
+      <div class="digit" id="d1"><span class="cap">MOD 02</span>?</div>
+      <div class="digit" id="d2"><span class="cap">MOD 03</span>?</div>
+    </div>
+
+    <input id="finalCode" inputmode="numeric" maxlength="3" placeholder="_ _ _">
+    <div style="max-width:320px;margin:12px auto 0">
+      <button class="btn" id="checkFinal">⚡ Repornește nava</button>
+    </div>
+    <div class="feedback" id="fbFinal" style="text-align:center"></div>
+
+    <div class="win" id="win">
+      <h2>NAVĂ ONLINE</h2>
+      <p>Motoarele pornesc. Kepler-9 își corectează traiectoria și prinde ruta de întoarcere.</p>
+      <p style="color:var(--ink-dim);font-size:12px;margin-top:18px">Ai scăpat în <b id="finalTime" style="color:var(--amber)">—</b> · Bun venit acasă, cadet.</p>
+      <button class="btn ghost" id="restart" style="max-width:240px;margin:22px auto 0">↺ Rejoacă</button>
+    </div>
+  </section>
+
+  <footer>ARV Kepler-9 · Sistem de instruire InfoEducație · rulează offline</footer>
+</div>
+
+<script>
+/* ============================================================
+   STARE GLOBALĂ
+   Codul final e derivat din răspunsurile corecte — nu e hardcodat
+   într-un mod pe care elevul îl poate citi din vreo pagină statică.
+   ============================================================ */
+const CODE = ['?','?','?'];         // se completează pe măsură ce rezolvi
+const SOLVED = [false,false,false];
+let currentRoom = -1;
+
+const $ = s => document.querySelector(s);
+const rooms = ['room1','room2','room3'];
+
+/* ---------- TIMER OXIGEN ---------- */
+let secs = 14*60, timerId=null, startedAt=null;
+function fmt(s){const m=Math.floor(s/60),x=s%60;return m+':'+String(x).padStart(2,'0');}
+function startTimer(){
+  startedAt=Date.now();
+  timerId=setInterval(()=>{
+    secs--;
+    $('#o2').textContent=fmt(secs);
+    if(secs<=120)$('#o2').classList.add('crit');
+    if(secs<=0){clearInterval(timerId);$('#o2').textContent='0:00';gameOver();}
+  },1000);
+}
+function gameOver(){
+  document.querySelectorAll('.room').forEach(r=>r.classList.remove('show'));
+  const b=$('#brief');b.classList.remove('hidden');
+  b.innerHTML='<div class="sub" style="color:var(--err)">Oxigen epuizat</div>'+
+    '<h1 style="color:var(--err)">SEMNAL <em style="color:var(--err)">TĂCUT</em></h1>'+
+    '<p>Rezervorul e gol. Nava plutește tăcută spre marginea sistemului solar.</p>'+
+    '<button class="btn" onclick="location.reload()" style="max-width:220px">↺ Reîncearcă</button>';
+}
+
+/* ---------- NAVIGARE ---------- */
+function goRoom(i){
+  currentRoom=i;
+  document.querySelectorAll('.room').forEach(r=>r.classList.remove('show'));
+  if(i<3){ $('#'+rooms[i]).classList.add('show'); }
+  else { $('#final').classList.add('show'); }
+  document.querySelectorAll('.node').forEach((n,idx)=>{
+    n.classList.remove('active','locked');
+    if(SOLVED[idx])n.classList.add('done');
+    if(idx===i)n.classList.add('active');
+    if(idx>i && !SOLVED[idx])n.classList.add('locked');
+  });
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function solveRoom(i,digit){
+  SOLVED[i]=true; CODE[i]=digit;
+  $('#codeCount').textContent=SOLVED.filter(Boolean).length+' / 3';
+  $('#d'+i).textContent=digit; $('#d'+i).classList.add('filled');
+  $('#frag'+(i+1)).textContent=digit;
+  $('#code'+(i+1)).classList.add('show');
+}
+
+$('#startBtn').onclick=()=>{
+  setupPuzzles();
+  $('#brief').classList.add('hidden');
+  $('#rail').classList.remove('hidden');
+  startTimer();
+  goRoom(0);
+};
+
+
+const RND = {};                     // parametrii sesiunii curente
+const randi=(a,b)=>a+Math.floor(Math.random()*(b-a+1));  // întreg în [a,b]
+function digitFrom(x){ return String(Math.abs(Math.round(x))%10); } // ultima cifră
+
+function setupPuzzles(){
+  // --- Camera 1: alege o rază din setul discret al sliderului (mult. de 5) ---
+  const razeValide=[];
+  for(let r=125;r<=255;r+=5) razeValide.push(r);        // evităm 200 fix
+  RND.r1 = razeValide[randi(0,razeValide.length-1)];
+  RND.v1correct = vNeeded(RND.r1);                       // km/s corectă
+  RND.dig1 = digitFrom(RND.v1correct*100);              // cifră din v (ex 3.04 -> 304 -> 4)
+
+  // --- Camera 2: alege deplasarea spre roșu -> λ_obs, v = z*c ---
+  const dLambda = randi(12,45);                          // deplasare 12..45 nm
+  RND.lamObs = 656.3 + dLambda;
+  RND.z2 = dLambda/656.3;
+  RND.v2correct = RND.z2 * 300000;                       // km/s
+  RND.dig2 = digitFrom(RND.v2correct/100);              // cifră stabilă din viteză
+
+  // --- Camera 3: alege paralaxa -> distanță d=1/p ---
+  const pMas = randi(15,60);                             // paralaxă p în miliarcsec (0.015..0.060")
+  RND.p3 = pMas/1000;                                    // secunde de arc
+  RND.shift3 = RND.p3*2;                                 // deplasare totală afișată (2p)
+  RND.d3correct = 1/RND.p3;                              // parseci
+  RND.dig3 = digitFrom(RND.d3correct);                  // cifră din distanță
+
+  // aplică în interfață (label-uri + slidere)
+  document.getElementById('r1').max = 255; document.getElementById('r1').min=125;
+  document.getElementById('r1').value = razeValide[0];   // start departe de soluție
+  document.getElementById('r1v').textContent = razeValide[0];
+  document.getElementById('v1').value = 1.50;
+  document.getElementById('v1v').textContent='1.50';
+  document.getElementById('vneed').textContent='—';
+  document.getElementById('ecc').textContent='—';
+  // camera 2: sliderul cursorului trebuie să acopere λ_obs
+  const w2=document.getElementById('w2');
+  w2.min=656.3; w2.max=Math.max(720, Math.ceil(RND.lamObs+20)); w2.value=656.3;
+  document.getElementById('w2v').textContent='656.3';
+  document.getElementById('lobs').textContent='— nm';
+  if(typeof drawSpectrum==='function') drawSpectrum();
+  // camera 3: deplasarea afișată
+  document.getElementById('shift').textContent=RND.shift3.toFixed(3)+' ″';
+  if(typeof drawParallax==='function') drawParallax();
+  if(typeof drawScene1==='function') drawScene1();
+}
+
+const GMpx_CONST = 4200;               // constantă gravitațională în unități ecran
+const PXPERMM = 0.62;                  // 1 Mm -> px  (pentru desenul razei)
+const CX=280, CY=210;
+// viteza circulară teoretică (px/timp) = sqrt(GMpx/r). Injectăm exact această
+// valoare când v_kms = vNeeded, deci orbita e cerc prin construcție.
+function vCircPx(r_Mm){ return Math.sqrt(GMpx_CONST/(r_Mm*PXPERMM)); }
+// factor de conversie px/timp -> km/s, calibrat ca la 180Mm să dea 3.20 km/s
+const KMS_PER_PXV = 3.20 / vCircPx(180);
+function vNeeded(r_Mm){ return vCircPx(r_Mm)*KMS_PER_PXV; }   // km/s afișat
+
+const cv1=$('#cv1'), x1=cv1.getContext('2d');
+let sim1=null; // {x,y,vx,vy,trail,alive,captured,frames}
+
+function drawScene1(){
+  x1.clearRect(0,0,560,420);
+  x1.fillStyle='#070b11';x1.fillRect(0,0,560,420);
+  for(let i=0;i<70;i++){const sx=(i*97)%560,sy=(i*53)%420;x1.fillStyle='rgba(200,220,255,'+(0.05+(i%5)*0.03)+')';x1.fillRect(sx,sy,1,1);}
+  // planeta
+  const rad=22;
+  const g=x1.createRadialGradient(CX-6,CY-6,4,CX,CY,rad);
+  g.addColorStop(0,'#ffd9a0');g.addColorStop(.5,'#d98a3a');g.addColorStop(1,'#5a3410');
+  x1.fillStyle=g;x1.beginPath();x1.arc(CX,CY,rad,0,7);x1.fill();
+  x1.strokeStyle='rgba(255,182,72,.25)';x1.lineWidth=1;
+  // inel raza aleasă (țintă)
+  const rTarget=(+$('#r1').value)*PXPERMM;
+  x1.setLineDash([4,6]);x1.beginPath();x1.arc(CX,CY,rTarget,0,7);x1.stroke();x1.setLineDash([]);
+  // sonda + trail
+  if(sim1){
+    x1.strokeStyle='rgba(79,214,232,.5)';x1.lineWidth=1.5;x1.beginPath();
+    sim1.trail.forEach((p,i)=>{i?x1.lineTo(p.x,p.y):x1.moveTo(p.x,p.y);});x1.stroke();
+    x1.fillStyle=sim1.captured?'#7ee787':(sim1.alive?'#4fd6e8':'#ff6b6b');
+    x1.beginPath();x1.arc(sim1.x,sim1.y,4,0,7);x1.fill();
+    x1.shadowBlur=12;x1.shadowColor=x1.fillStyle;x1.beginPath();x1.arc(sim1.x,sim1.y,4,0,7);x1.fill();x1.shadowBlur=0;
+  }
+}
+let raf1=null;
+function launch1(){
+  cancelAnimationFrame(raf1);
+  const r_Mm=+$('#r1').value;
+  const v_kms=+$('#v1').value;
+  const r_px=r_Mm*PXPERMM;
+  // viteză inițială în px/frame, obținută din km/s prin ACEEAȘI scalare ca vNeeded
+  const v_px = v_kms / KMS_PER_PXV;
+  // start la dreapta planetei, viteză tangențială (în sus)
+  sim1={x:CX+r_px, y:CY, vx:0, vy:-v_px, trail:[], alive:true, captured:false, frames:0};
+  let minR=1e9, maxR=0;
+  const DT=0.7, SUB=8;   // integrator symplectic: pas mic + subpași (accelerat)
+  function step(){
+    for(let k=0;k<SUB;k++){
+      const dx=sim1.x-CX, dy=sim1.y-CY, d=Math.hypot(dx,dy);
+      if(d<24){sim1.alive=false;break;}          // impact cu planeta
+      const a=GMpx_CONST/(d*d);
+      // Euler-Cromer (symplectic): actualizează viteza ÎNTÂI, apoi poziția
+      sim1.vx-=a*dx/d*DT; sim1.vy-=a*dy/d*DT;
+      sim1.x+=sim1.vx*DT; sim1.y+=sim1.vy*DT;
+      minR=Math.min(minR,d); maxR=Math.max(maxR,d);
+    }
+    sim1.trail.push({x:sim1.x,y:sim1.y});
+    if(sim1.trail.length>500)sim1.trail.shift();
+    sim1.frames++;
+    const dNow=Math.hypot(sim1.x-CX,sim1.y-CY);
+    if(dNow>320){sim1.alive=false;}               // scăpat din câmp
+    const ecc=(maxR-minR)/(maxR+minR||1);
+    $('#ecc').textContent=isFinite(ecc)?ecc.toFixed(3):'—';
+    drawScene1();
+    if(!sim1.alive){
+      $('#fb1').className='feedback err';
+      $('#vneed').style.color='var(--err)';
+      if(dNow>320){
+        $('#vneed').textContent='PREA MARE';
+        $('#fb1').textContent='Sonda a scăpat în spațiu — viteză prea mare.';
+      }else{
+        $('#vneed').textContent='PREA MICĂ';
+        $('#fb1').textContent='Sonda s-a prăbușit — viteză prea mică.';
+      }
+      $('#check1').disabled=true; return;
+    }
+    if(sim1.frames>150){                            // a parcurs ~o orbită completă
+      sim1.captured = ecc<0.055;
+      drawScene1();
+      if(sim1.captured){
+        $('#fb1').className='feedback ok';
+        $('#vneed').textContent='STABILĂ';$('#vneed').style.color='var(--ok)';
+        $('#fb1').textContent='Orbită circulară stabilă. Blochează pentru a extrage codul.';
+        $('#check1').disabled=false;
+      }else{
+        $('#fb1').className='feedback err';
+        $('#vneed').style.color='var(--err)';
+        // indică direcția fără a da răspunsul: ecc mare + start apropiat => prea mică
+        $('#vneed').textContent = (maxR>+$('#r1').value*PXPERMM+4)?'PREA MARE':'PREA MICĂ';
+        $('#fb1').textContent='Orbită eliptică (ecc='+ecc.toFixed(3)+'). Recalculează v = √(GM/r).';
+        $('#check1').disabled=true;
+      }
+      return;
+    }
+    raf1=requestAnimationFrame(step);
+  }
+  step();
+}
+$('#r1').oninput=e=>{ $('#r1v').textContent=e.target.value; $('#vneed').textContent='—'; $('#vneed').style.color=''; $('#ecc').textContent='—'; drawScene1(); $('#check1').disabled=true; };
+$('#v1').oninput=e=>{ $('#v1v').textContent=(+e.target.value).toFixed(2); $('#vneed').textContent='—'; $('#vneed').style.color=''; $('#check1').disabled=true; };
+$('#launch1').onclick=launch1;
+$('#check1').onclick=()=>{
+  if(sim1&&sim1.captured){
+    solveRoom(0,RND.dig1);
+    $('#fb1').className='feedback ok';
+    $('#fb1').textContent='Cod extras. Modul 02 deblocat.';
+    setTimeout(()=>goRoom(1),1400);
+  }
+};
+$('#vneed').textContent='—';
+drawScene1();
+
+
+const cv2=$('#cv2'), x2=cv2.getContext('2d');
+function drawSpectrum(){
+  const LAMBDA_OBS=RND.lamObs||675.3;
+  x2.clearRect(0,0,560,420);
+  x2.fillStyle='#070b11';x2.fillRect(0,0,560,420);
+  // banda spectrală (violet->roșu) 400..720 mapat pe 40..520 px
+  const x0=40,x1p=520,y0=120,h=90;
+  const wl2x=wl=>x0+(wl-400)/(720-400)*(x1p-x0);
+  for(let px=x0;px<=x1p;px++){
+    const wl=400+(px-x0)/(x1p-x0)*(720-400);
+    x2.fillStyle=wlColor(wl);x2.fillRect(px,y0,1,h);
+  }
+  x2.strokeStyle='var(--hull)';x2.strokeStyle='#1a2530';x2.strokeRect(x0,y0,x1p-x0,h);
+  // linia de laborator (referință, punctată)
+  x2.setLineDash([5,5]);x2.strokeStyle='rgba(200,220,255,.5)';x2.lineWidth=1;
+  x2.beginPath();x2.moveTo(wl2x(656.3),y0-14);x2.lineTo(wl2x(656.3),y0+h+14);x2.stroke();x2.setLineDash([]);
+  x2.fillStyle='#c9d6e2';x2.font='11px DM Mono, monospace';
+  x2.fillText('H-α laborator 656.3',wl2x(656.3)-52,y0-20);
+  // linia observată (întunecată, absorbție) la LAMBDA_OBS
+  x2.fillStyle='#070b11';x2.fillRect(wl2x(LAMBDA_OBS)-2,y0,4,h);
+  x2.fillStyle='#ff6b6b';x2.fillText('linie observată',wl2x(LAMBDA_OBS)-30,y0+h+30);
+  // cursor
+  const cx=wl2x(+$('#w2').value);
+  x2.strokeStyle='#ffb648';x2.lineWidth=2;x2.beginPath();x2.moveTo(cx,y0-8);x2.lineTo(cx,y0+h+8);x2.stroke();
+  x2.fillStyle='#ffb648';x2.beginPath();x2.moveTo(cx,y0-8);x2.lineTo(cx-5,y0-16);x2.lineTo(cx+5,y0-16);x2.fill();
+  // axă
+  x2.fillStyle='#6b7d8f';x2.font='10px DM Mono';
+  [450,550,650,700].forEach(t=>{x2.fillText(t+'nm',wl2x(t)-14,y0+h+52);});
+  // titlu
+  x2.fillStyle='#8a6a30';x2.font='11px DM Mono';x2.fillText('SPECTRU · GALAXIA UDF-2214',x0,40);
+}
+function wlColor(wl){
+  let r,g,b;
+  if(wl<440){r=(440-wl)/(440-400);g=0;b=1;}
+  else if(wl<490){r=0;g=(wl-440)/(490-440);b=1;}
+  else if(wl<510){r=0;g=1;b=(510-wl)/(510-490);}
+  else if(wl<580){r=(wl-510)/(580-510);g=1;b=0;}
+  else if(wl<645){r=1;g=(645-wl)/(645-580);b=0;}
+  else {r=1;g=0;b=0;}
+  return `rgb(${Math.round(r*255)},${Math.round(g*255)},${Math.round(b*255)})`;
+}
+$('#w2').oninput=e=>{$('#w2v').textContent=(+e.target.value).toFixed(1);$('#lobs').textContent=(+e.target.value).toFixed(1)+' nm';drawSpectrum();};
+$('#check2').onclick=()=>{
+  const cursorOK=Math.abs(+$('#w2').value-RND.lamObs)<=0.6;
+  const v=parseInt($('#dist2').value,10);
+  if(!cursorOK){$('#fb2').className='feedback err';$('#fb2').textContent='Cursorul nu e pe linia observată. Aliniază-l întâi.';return;}
+  if(isNaN(v)){$('#fb2').className='feedback err';$('#fb2').textContent='Introdu viteza calculată.';return;}
+  const tol=Math.max(RND.v2correct*0.03, 120);          // ±3% sau min 120 km/s
+  if(Math.abs(v-RND.v2correct)<=tol){
+    solveRoom(1,RND.dig2);
+    $('#fb2').className='feedback ok';
+    $('#fb2').textContent='Viteză confirmată: ~'+Math.round(RND.v2correct).toLocaleString('ro-RO')+' km/s. Cod extras.';
+    setTimeout(()=>goRoom(2),1400);
+  }else{
+    $('#fb2').className='feedback err';
+    $('#fb2').textContent='Viteză greșită. z = (λ_obs−656,3)/656,3, apoi v = z·c. (toleranță ±3%)';
+  }
+};
+drawSpectrum();$('#lobs').textContent='— nm';
+
+
+const cv3=$('#cv3'), x3=cv3.getContext('2d');
+let epochJan=true;
+function drawParallax(){
+  x3.clearRect(0,0,560,420);
+  x3.fillStyle='#070b11';x3.fillRect(0,0,560,420);
+  // stele de fundal (fixe)
+  const bg=[[120,90],[210,140],[330,70],[430,130],[470,220],[150,260],[380,300],[90,180],[500,90],[260,340]];
+  x3.fillStyle='#c9d6e2';x3.font='10px DM Mono';
+  bg.forEach((s,i)=>{x3.globalAlpha=.6;x3.beginPath();x3.arc(s[0],s[1],1.5,0,7);x3.fill();});
+  x3.globalAlpha=1;
+  // Soare jos
+  const sg=x3.createRadialGradient(280,395,2,280,395,18);
+  sg.addColorStop(0,'#fff4d6');sg.addColorStop(1,'#d98a3a');
+  x3.fillStyle=sg;x3.beginPath();x3.arc(280,400,16,0,7);x3.fill();
+  // Pământ în 2 poziții
+  const ex = epochJan? 200 : 360;
+  x3.fillStyle='#3a7bd5';x3.beginPath();x3.arc(ex,370,7,0,7);x3.fill();
+  x3.fillStyle='#6b7d8f';x3.fillText(epochJan?'Ian':'Iul',ex-8,392);
+  x3.strokeStyle='rgba(107,125,143,.3)';x3.setLineDash([3,4]);
+  x3.beginPath();x3.ellipse(280,370,90,16,0,0,7);x3.stroke();x3.setLineDash([]);
+  // steaua apropiată — poziția aparentă se schimbă
+  const starX = epochJan? 296 : 264; // deplasare vizibilă (exagerată pt desen)
+  const starY = 150;
+  // linia de vizare
+  x3.strokeStyle='rgba(255,182,72,.4)';x3.lineWidth=1;x3.setLineDash([2,4]);
+  x3.beginPath();x3.moveTo(ex,370);x3.lineTo(starX,starY);x3.stroke();x3.setLineDash([]);
+  // steaua
+  x3.fillStyle='#ffb648';x3.shadowBlur=14;x3.shadowColor='#ffb648';
+  x3.beginPath();x3.arc(starX,starY,5,0,7);x3.fill();x3.shadowBlur=0;
+  x3.fillStyle='#8a6a30';x3.font='11px DM Mono';x3.fillText('Vega-B',starX+10,starY);
+  // marcăm ambele poziții aparente palid ca să se vadă deplasarea
+  x3.globalAlpha=.35;x3.fillStyle='#4fd6e8';
+  x3.beginPath();x3.arc(epochJan?264:296,starY,4,0,7);x3.fill();x3.globalAlpha=1;
+  x3.fillStyle='#8a6a30';x3.font='11px DM Mono';x3.fillText('CÂMP STELAR · fundal fix',20,30);
+}
+$('#toggle3').onclick=()=>{
+  epochJan=!epochJan;
+  $('#toggle3').textContent='⇄ Comută: '+(epochJan?'IANUARIE':'IULIE');
+  $('#epoch').textContent=epochJan?'Ianuarie':'Iulie';
+  drawParallax();
+};
+$('#shift').textContent=(RND.shift3||0.050).toFixed(3)+' ″';
+$('#check3').onclick=()=>{
+  const d=parseFloat($('#dist3').value);
+  if(isNaN(d)){$('#fb3').className='feedback err';$('#fb3').textContent='Introdu distanța în parseci.';return;}
+  const tol=Math.max(RND.d3correct*0.02, 0.6);           // ±2% sau min 0.6 pc
+  if(Math.abs(d-RND.d3correct)<=tol){
+    solveRoom(2,RND.dig3);
+    $('#fb3').className='feedback ok';
+    $('#fb3').textContent='Distanță confirmată: '+RND.d3correct.toFixed(1)+' pc. Ultimul cod extras.';
+    setTimeout(()=>goRoom(3),1400);
+  }else{
+    $('#fb3').className='feedback err';
+    $('#fb3').textContent='Greșit. p = deplasare/2; d = 1/p. Rezultatul e în parseci.';
+  }
+};
+drawParallax();
+
+
+$('#checkFinal').onclick=()=>{
+  const guess=$('#finalCode').value.trim();
+  const real=CODE.join('');
+  if(SOLVED.filter(Boolean).length<3){
+    $('#fbFinal').className='feedback err';$('#fbFinal').textContent='Rezolvă toate cele 3 module întâi.';return;
+  }
+  if(guess===real){
+    clearInterval(timerId);
+    const used=14*60-secs;
+    $('#finalTime').textContent=fmt(used);
+    $('#sysStat').textContent='ONLINE';$('#sysStat').classList.remove('crit');
+    $('#sysStat').style.color='var(--ok)';
+    $('.lockrow')&&($('#final .lockrow').style.display='none');
+    $('#finalCode').style.display='none';$('#checkFinal').parentElement.style.display='none';
+    $('#final .story').style.display='none';
+    $('#win').classList.add('show');
+  }else{
+    $('#fbFinal').className='feedback err';$('#fbFinal').textContent='Cod incorect. Verifică cifrele extrase din module.';
+  }
+};
+$('#restart').onclick=()=>location.reload();
+</script>
+</body>
+</html>
