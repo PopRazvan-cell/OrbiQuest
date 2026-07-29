@@ -1,0 +1,170 @@
+/* ============================================================
+   ARV KEPLER-9 — stil comun
+   Estetică: blockchain / tech landing (ref. JumpBot).
+   ============================================================ */
+:root{
+  --void:#070b16;
+  --void-2:#0c1322;
+  --panel:#0e1626;
+  --panel-2:#111c30;
+  --hull:#1b2942;
+  --hull-lit:#2a3f63;
+  --accent:#2ea3f2;
+  --accent-2:#5bc0ff;
+  --accent-deep:#1a6cb5;
+  --accent-dim:#1c527f;
+  --ok:#4ade80;
+  --err:#ff6b6b;
+  --ink:#e6eefb;
+  --ink-dim:#8494ac;
+  --grid:rgba(46,163,242,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:
+    radial-gradient(1100px 500px at 78% -5%, rgba(46,163,242,.14), transparent 60%),
+    radial-gradient(800px 600px at 10% 100%, rgba(26,108,181,.12), transparent 55%),
+    var(--void);
+  color:var(--ink);
+  font-family:'DM Sans','Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  line-height:1.6;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, rgba(180,210,255,.5), transparent),
+    radial-gradient(1px 1px at 65% 15%, rgba(180,210,255,.4), transparent),
+    radial-gradient(1px 1px at 80% 60%, rgba(180,210,255,.35), transparent),
+    radial-gradient(1px 1px at 40% 80%, rgba(180,210,255,.4), transparent),
+    radial-gradient(1px 1px at 90% 40%, rgba(180,210,255,.3), transparent),
+    radial-gradient(1px 1px at 12% 65%, rgba(180,210,255,.35), transparent),
+    linear-gradient(var(--grid) 1px,transparent 1px),
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:auto,auto,auto,auto,auto,auto,54px 54px,54px 54px;
+  mask-image:radial-gradient(ellipse at 50% 20%,#000 45%,transparent 90%);
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.001s!important;transition-duration:.001s!important}}
+
+.wrap{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:0 20px 60px}
+
+h1,h2,.logo b,.brand,.btn,.mcard .h,.digit,#finalCode,.frag,.node .nm,.stat .v,.dial label b,.metric .v,.txtin{
+  font-family:'Oswald','Archivo Narrow','Arial Narrow',sans-serif;
+}
+
+/* ---------- NAVBAR ---------- */
+.nav{display:flex;align-items:center;gap:20px;padding:22px 4px 6px}
+.brand{font-size:25px;font-weight:600;letter-spacing:.02em;color:var(--ink)}
+.brand span{color:var(--accent)}
+.nav .links{margin-left:auto;display:flex;gap:26px;align-items:center}
+.nav .links a{color:var(--ink-dim);text-decoration:none;font-size:14px;font-family:'DM Sans',sans-serif;transition:.2s}
+.nav .links a:hover,.nav .links a.active{color:var(--accent-2)}
+.nav .navcta{width:auto;padding:10px 22px;font-size:13px}
+@media(max-width:720px){.nav .links{display:none}}
+
+/* ---------- STATUS BAR ---------- */
+header{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  border:1px solid var(--hull);border-radius:14px;
+  background:linear-gradient(180deg,var(--void-2),var(--panel));
+  padding:14px 18px;margin:14px 0 20px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03),0 10px 34px rgba(0,0,0,.4);
+}
+.logo{display:flex;flex-direction:column;line-height:1.1}
+.logo b{font-weight:600;letter-spacing:.02em;font-size:20px;color:var(--ink)}
+.logo b i{color:var(--accent);font-style:normal}
+.logo span{font-size:10px;letter-spacing:.28em;color:var(--ink-dim);text-transform:uppercase;font-family:'DM Sans',sans-serif}
+.status{margin-left:auto;display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+.stat{display:flex;flex-direction:column;align-items:flex-end}
+.stat .k{font-size:9px;letter-spacing:.2em;color:var(--ink-dim);text-transform:uppercase;font-family:'DM Sans',sans-serif}
+.stat .v{font-size:16px;color:var(--accent-2);letter-spacing:.03em}
+.stat .v.crit{color:var(--err)}
+
+/* ---------- RAIL ---------- */
+.rail{display:flex;gap:12px;margin:0 0 26px}
+.node{flex:1;border:1px solid var(--hull);border-radius:12px;padding:14px 16px;background:linear-gradient(180deg,var(--panel),var(--void-2));position:relative;overflow:hidden;transition:.4s}
+.node .idx{font-size:10px;letter-spacing:.2em;color:var(--ink-dim);font-family:'DM Sans',sans-serif}
+.node .nm{font-size:15px;letter-spacing:.02em;margin-top:2px;color:var(--ink-dim)}
+.node.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 0 30px rgba(46,163,242,.2)}
+.node.active .nm{color:var(--accent-2)}
+.node.done{border-color:var(--ok)}
+.node.done .nm{color:var(--ok)}
+.node.done::after{content:"\2713";position:absolute;top:9px;right:12px;color:var(--ok)}
+.node.locked{opacity:.42}
+
+/* ---------- ROOM ---------- */
+.room{border:1px solid var(--hull);border-radius:18px;background:linear-gradient(180deg,var(--void-2),var(--panel));padding:26px;margin-bottom:22px;box-shadow:0 24px 60px rgba(0,0,0,.45)}
+.room h2{font-weight:600;font-size:28px;letter-spacing:.01em;color:var(--ink);margin-bottom:4px}
+.room h2 em{color:var(--accent);font-style:normal}
+.room .rlead{color:var(--ink-dim);font-size:12px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:18px;font-family:'DM Sans',sans-serif}
+.room .story{color:var(--ink);font-size:14px;margin-bottom:20px;max-width:70ch;border-left:2px solid var(--accent-dim);padding-left:14px}
+.room .story b{color:var(--accent-2)}
+
+.grid2{display:grid;grid-template-columns:1fr 330px;gap:22px;align-items:start}
+@media(max-width:720px){.grid2{grid-template-columns:1fr}}
+
+.stage{border:1px solid var(--hull);border-radius:14px;background:#050912;position:relative;overflow:hidden;box-shadow:inset 0 0 40px rgba(46,163,242,.06)}
+canvas{display:block;width:100%;height:auto}
+
+.readout{background:linear-gradient(180deg,#0a1220,#070d18);border:1px solid var(--hull);border-radius:14px;padding:16px 18px}
+.readout h3{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);margin-bottom:14px;font-family:'DM Sans',sans-serif;font-weight:700}
+
+.dial{margin-bottom:18px}
+.dial label{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-dim);letter-spacing:.04em;margin-bottom:8px}
+.dial label b{color:var(--accent-2);font-size:14px}
+input[type=range]{-webkit-appearance:none;width:100%;height:5px;border-radius:4px;background:linear-gradient(90deg,var(--accent-dim),var(--accent-2));outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent);border:3px solid #050912;cursor:pointer;box-shadow:0 0 14px rgba(46,163,242,.8)}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--accent);border:3px solid #050912;cursor:pointer;box-shadow:0 0 14px rgba(46,163,242,.8)}
+
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0 16px}
+.metric{border:1px solid var(--hull);border-radius:10px;padding:10px 12px;background:rgba(46,163,242,.03)}
+.metric .k{font-size:9px;letter-spacing:.14em;color:var(--ink-dim);text-transform:uppercase;font-family:'DM Sans',sans-serif}
+.metric .v{font-size:17px;color:var(--accent-2)}
+.metric .v.good{color:var(--ok)}
+
+.txtin{width:100%;background:#050912;border:1px solid var(--hull);border-radius:10px;color:var(--accent-2);font-size:22px;letter-spacing:.08em;padding:12px;text-align:center;margin-bottom:12px}
+.txtin:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(46,163,242,.18)}
+
+.btn{font-family:'Oswald',sans-serif;letter-spacing:.04em;font-size:14px;background:linear-gradient(180deg,var(--accent-2),var(--accent));color:#04101d;border:none;border-radius:999px;padding:13px 22px;cursor:pointer;width:100%;font-weight:600;transition:.2s;box-shadow:0 6px 20px rgba(46,163,242,.35),inset 0 1px 0 rgba(255,255,255,.3)}
+.btn:hover{filter:brightness(1.08);box-shadow:0 8px 30px rgba(46,163,242,.55),inset 0 1px 0 rgba(255,255,255,.3);transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.btn.ghost{background:transparent;color:var(--accent-2);border:1px solid var(--accent-dim);box-shadow:none}
+.btn.ghost:hover{background:rgba(46,163,242,.08);border-color:var(--accent);box-shadow:0 0 20px rgba(46,163,242,.2)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none;filter:none}
+
+.feedback{margin-top:14px;font-size:13px;min-height:20px;letter-spacing:.01em}
+.feedback.ok{color:var(--ok)}
+.feedback.err{color:var(--err)}
+
+.codeout{margin-top:16px;border:1px dashed var(--accent-dim);border-radius:12px;padding:14px;text-align:center;display:none;background:rgba(46,163,242,.04)}
+.codeout.show{display:block;animation:rise .4s}
+.codeout .lab{font-size:10px;letter-spacing:.22em;color:var(--ink-dim);text-transform:uppercase;font-family:'DM Sans',sans-serif}
+.codeout .frag{font-size:34px;letter-spacing:.3em;color:var(--accent-2);text-shadow:0 0 24px rgba(46,163,242,.6)}
+
+details{margin-top:16px;border:1px solid var(--hull);border-radius:12px;background:var(--panel)}
+summary{cursor:pointer;padding:11px 16px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);list-style:none;font-family:'DM Sans',sans-serif;font-weight:700}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"\25b8  ";color:var(--accent-dim)}
+details[open] summary::before{content:"\25be  "}
+details .body{padding:0 16px 16px;font-size:13px;color:var(--ink-dim)}
+details .body code{color:var(--accent-2);background:rgba(46,163,242,.1);padding:1px 6px;border-radius:5px}
+.kbd{color:var(--ink);background:var(--hull);padding:2px 8px;border-radius:6px;font-size:12px}
+
+@keyframes rise{from{opacity:0;transform:translateY(14px)}}
+
+/* ---------- TRANZIȚIE ---------- */
+#transition{position:fixed;inset:0;z-index:10000;pointer-events:none;display:flex;align-items:center;justify-content:center;opacity:0}
+#transition.run{pointer-events:all;animation:transFade 1.9s ease forwards}
+@keyframes transFade{0%{opacity:0}12%{opacity:1}78%{opacity:1}100%{opacity:0}}
+#transition canvas{width:100%;height:100%;position:absolute;inset:0}
+#transition .tlabel{position:relative;z-index:2;text-align:center;font-family:'Oswald',sans-serif;letter-spacing:.2em;text-transform:uppercase}
+#transition .tlabel .big{font-size:28px;color:var(--accent-2);text-shadow:0 0 28px rgba(46,163,242,.7)}
+#transition .tlabel .small{font-size:11px;color:var(--ink-dim);margin-top:10px;letter-spacing:.3em}
+
+.enter{animation:enterRoom .8s ease both}
+@keyframes enterRoom{from{opacity:0;transform:translateY(20px) scale(.99)}to{opacity:1;transform:none}}
+
+.hidden{display:none!important}
+.center{text-align:center}

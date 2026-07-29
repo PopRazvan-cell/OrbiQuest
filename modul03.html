@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Modul 03 — Triangulația stelară</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo"><b>ARV · KEPLER<i>9</i></b><span>Observator astrometric</span></div>
+    <div class="status">
+      <div class="stat"><span class="k">Oxigen</span><span class="v" id="o2">14:00</span></div>
+      <div class="stat"><span class="k">Coduri</span><span class="v" id="codeCount">2 / 3</span></div>
+    </div>
+  </header>
+
+  <div class="rail" id="rail"></div>
+
+  <section class="room enter">
+    <h2>Modul 03 — Triangulația stelară</h2>
+    <div class="rlead">Instrument: astrometru · Fizică: paralaxă trigonometrică</div>
+    <p class="story">Ultimul modul cere o reper de navigație: distanța până la steaua Vega-B. O măsori
+       prin paralaxă — observi steaua din două poziții opuse ale orbitei Pământului (la 6 luni) și
+       vezi cât pare că se deplasează pe cerul de fundal. Comută între poziții, citește deplasarea,
+       calculează distanța.</p>
+
+    <div class="grid2">
+      <div class="stage"><canvas id="cv3" width="560" height="420"></canvas></div>
+      <div class="readout">
+        <h3>Consolă astrometru</h3>
+        <button class="btn ghost" id="toggle3" style="margin-bottom:12px">⇄ Comută: IANUARIE</button>
+        <div class="metrics">
+          <div class="metric"><div class="k">Poziție observ.</div><div class="v" id="epoch">Ianuarie</div></div>
+          <div class="metric"><div class="k">Deplasare totală</div><div class="v" id="shift">— ″</div></div>
+        </div>
+        <p style="font-size:11px;color:var(--ink-dim);margin-bottom:6px;letter-spacing:.06em">
+          Deplasarea totală (2p) e afișată. Calculează distanța și introdu-o în <b>parseci</b> (o zecimală):</p>
+        <input id="dist3" class="txtin" inputmode="decimal" placeholder="ex: 12.5">
+        <button class="btn" id="check3">Confirmă distanța</button>
+        <div class="feedback" id="fb3"></div>
+        <div class="codeout" id="code3">
+          <div class="lab">Cod recuperat · poziția 3</div>
+          <div class="frag" id="frag3">?</div>
+        </div>
+        <details>
+          <summary>Fișă tehnică</summary>
+          <div class="body">
+            Unghiul de paralaxă <code>p</code> e JUMĂTATE din deplasarea totală: <code>p = deplasare / 2</code> (″).<br>
+            Distanța: <code>d [parseci] = 1 / p[″]</code>.<br>
+            Ex: deplasare 0,050″ ⟹ p = 0,025″ ⟹ d = 40 pc.
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script src="shared.js"></script>
+<script>
+const seed=getSeed();
+if(seed===null){ location.href='index.html'; }
+const P=buildParams(seed);
+const codes=getCodes();
+
+startOxygen(document.getElementById('o2'), ()=>{ location.href=nextURL('gameover.html'); });
+renderRail(document.getElementById('rail'), 2);
+document.getElementById('codeCount').textContent=((codes.c1?1:0)+(codes.c2?1:0))+' / 3';
+
+const cv3=$('#cv3'), x3=cv3.getContext('2d');
+let epochJan=true;
+$('#shift').textContent=P.shift3.toFixed(3)+' ″';
+
+function drawParallax(){
+  x3.clearRect(0,0,560,420);
+  x3.fillStyle='#070b11';x3.fillRect(0,0,560,420);
+  const bg=[[120,90],[210,140],[330,70],[430,130],[470,220],[150,260],[380,300],[90,180],[500,90],[260,340]];
+  x3.fillStyle='#c9d6e2';
+  bg.forEach(s=>{x3.globalAlpha=.6;x3.beginPath();x3.arc(s[0],s[1],1.5,0,7);x3.fill();});
+  x3.globalAlpha=1;
+  const sg=x3.createRadialGradient(280,395,2,280,395,18);
+  sg.addColorStop(0,'#fff4d6');sg.addColorStop(1,'#d98a3a');
+  x3.fillStyle=sg;x3.beginPath();x3.arc(280,400,16,0,7);x3.fill();
+  const ex=epochJan?200:360;
+  x3.fillStyle='#3a7bd5';x3.beginPath();x3.arc(ex,370,7,0,7);x3.fill();
+  x3.fillStyle='#6b7d8f';x3.font='11px DM Mono';x3.fillText(epochJan?'Ian':'Iul',ex-8,392);
+  x3.strokeStyle='rgba(107,125,143,.3)';x3.setLineDash([3,4]);
+  x3.beginPath();x3.ellipse(280,370,90,16,0,0,7);x3.stroke();x3.setLineDash([]);
+  const starX=epochJan?296:264, starY=150;
+  x3.strokeStyle='rgba(91,192,255,.4)';x3.lineWidth=1;x3.setLineDash([2,4]);
+  x3.beginPath();x3.moveTo(ex,370);x3.lineTo(starX,starY);x3.stroke();x3.setLineDash([]);
+  x3.fillStyle='#5bc0ff';x3.shadowBlur=14;x3.shadowColor='#5bc0ff';
+  x3.beginPath();x3.arc(starX,starY,5,0,7);x3.fill();x3.shadowBlur=0;
+  x3.fillStyle='#4a6a8a';x3.font='11px DM Mono';x3.fillText('Vega-B',starX+10,starY);
+  x3.globalAlpha=.35;x3.fillStyle='#4fd6e8';
+  x3.beginPath();x3.arc(epochJan?264:296,starY,4,0,7);x3.fill();x3.globalAlpha=1;
+  x3.fillStyle='#4a6a8a';x3.fillText('CÂMP STELAR · fundal fix',20,30);
+}
+$('#toggle3').onclick=()=>{
+  epochJan=!epochJan;
+  $('#toggle3').textContent='⇄ Comută: '+(epochJan?'IANUARIE':'IULIE');
+  $('#epoch').textContent=epochJan?'Ianuarie':'Iulie';
+  drawParallax();
+};
+$('#check3').onclick=()=>{
+  const d=parseFloat($('#dist3').value);
+  if(isNaN(d)){$('#fb3').className='feedback err';$('#fb3').textContent='Introdu distanța în parseci.';return;}
+  const tol=Math.max(P.d3correct*0.02,0.6);
+  if(Math.abs(d-P.d3correct)<=tol){
+    $('#frag3').textContent=P.dig3; $('#code3').classList.add('show');
+    $('#fb3').className='feedback ok';
+    $('#fb3').textContent='Distanță confirmată: '+P.d3correct.toFixed(1)+' pc. Spre nucleul navei...';
+    setTimeout(()=>{
+      playTransition('corridor','Acces nucleu','Core · Secvență de repornire',
+        nextURL('modul04.html',{c3:P.dig3}));
+    },1200);
+  }else{
+    $('#fb3').className='feedback err';
+    $('#fb3').textContent='Greșit. p = deplasare/2; d = 1/p. Rezultatul e în parseci.';
+  }
+};
+drawParallax();
+</script>
+</body>
+</html>

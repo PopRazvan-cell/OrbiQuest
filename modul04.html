@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Core — Secvență de repornire</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .lockrow{display:flex;gap:10px;justify-content:center;margin:18px 0;flex-wrap:wrap}
+  .digit{width:64px;height:80px;background:#070b11;border:1px solid var(--hull);border-radius:8px;
+    display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-size:40px;color:var(--ink-dim);position:relative}
+  .digit .cap{position:absolute;top:6px;font-size:9px;letter-spacing:.1em;color:var(--ink-dim)}
+  .digit.filled{color:var(--accent-2);border-color:var(--accent-dim);text-shadow:0 0 16px rgba(91,192,255,.5)}
+  #finalCode{width:100%;max-width:320px;margin:0 auto;display:block;text-align:center;background:#070b11;
+    border:1px solid var(--hull);border-radius:8px;color:var(--accent-2);font-family:'Oswald',sans-serif;
+    font-size:28px;letter-spacing:.4em;padding:12px}
+  .core-canvas{border:1px solid var(--hull);border-radius:10px;background:#070b11;margin-bottom:18px}
+  .win{text-align:center;padding:30px 10px;display:none}
+  .win.show{display:block;animation:rise .6s}
+  .win h2{font-size:34px;color:var(--ok);text-shadow:0 0 30px rgba(126,231,135,.4)}
+  .win p{color:var(--ink);margin-top:10px}
+  /* overlay de plecare (warp) full-screen */
+  #depart{position:fixed;inset:0;z-index:10001;background:#05080d;display:none}
+  #depart.show{display:block}
+  #depart canvas{width:100%;height:100%}
+  #departText{position:absolute;left:0;right:0;bottom:12%;text-align:center;z-index:2;
+    font-family:'Oswald',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:var(--accent-2);
+    font-size:24px;text-shadow:0 0 24px rgba(91,192,255,.6);opacity:0;transition:opacity 1s}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo"><b>ARV · KEPLER<i>9</i></b><span>Nucleu de comandă</span></div>
+    <div class="status">
+      <div class="stat"><span class="k">Oxigen</span><span class="v" id="o2">14:00</span></div>
+      <div class="stat"><span class="k">Sisteme</span><span class="v crit" id="sysStat">AVARIATE</span></div>
+    </div>
+  </header>
+
+  <div class="rail" id="rail"></div>
+
+  <section class="room enter" id="coreSection">
+    <h2>Core — Secvență de repornire</h2>
+    <div class="rlead">Introdu codul de 3 cifre în ordinea modulelor</div>
+
+    <canvas id="core" class="core-canvas" width="920" height="220"></canvas>
+
+    <p class="story">Fiecare modul reparat ți-a dat o cifră. Computerul principal așteaptă codul complet.
+       O singură secvență corectă repornește motoarele.</p>
+
+    <div class="lockrow">
+      <div class="digit" id="d0"><span class="cap">MOD 01</span>?</div>
+      <div class="digit" id="d1"><span class="cap">MOD 02</span>?</div>
+      <div class="digit" id="d2"><span class="cap">MOD 03</span>?</div>
+    </div>
+
+    <input id="finalCode" inputmode="numeric" maxlength="3" placeholder="_ _ _">
+    <div style="max-width:320px;margin:12px auto 0">
+      <button class="btn" id="checkFinal">⚡ Repornește nava</button>
+    </div>
+    <div class="feedback center" id="fbFinal"></div>
+  </section>
+
+  <section class="room" id="winSection" style="display:none">
+    <div class="win show">
+      <h2>NAVĂ ONLINE</h2>
+      <p>Motoarele pornesc. Kepler-9 își corectează traiectoria și prinde ruta de întoarcere.</p>
+      <p style="color:var(--ink-dim);font-size:12px;margin-top:18px">Ai scăpat cu <b id="finalTime" style="color:var(--accent-2)">—</b> rezervă de oxigen · Bun venit acasă, cadet.</p>
+      <button class="btn ghost" id="restart" style="max-width:240px;margin:22px auto 0">↺ Joacă din nou</button>
+    </div>
+  </section>
+</div>
+
+<!-- overlay animație de plecare -->
+<div id="depart">
+  <canvas id="departCv"></canvas>
+  <div id="departText">Motoare la putere maximă</div>
+</div>
+
+<script src="shared.js"></script>
+<script>
+const seed=getSeed();
+if(seed===null){ location.href='index.html'; }
+const P=buildParams(seed);
+const codes=getCodes();
+
+let timerId=startOxygen(document.getElementById('o2'), ()=>{ location.href=nextURL('gameover.html'); });
+renderRail(document.getElementById('rail'), 3);
+
+/* pre-completează cifrele obținute în afișaj */
+const realCode = ''+(codes.c1||'')+(codes.c2||'')+(codes.c3||'');
+function fillDigit(id,cap,val){
+  const el=$('#'+id);
+  el.innerHTML='<span class="cap">'+cap+'</span>'+val;
+  el.classList.add('filled');
+}
+if(codes.c1) fillDigit('d0','MOD 01',codes.c1);
+if(codes.c2) fillDigit('d1','MOD 02',codes.c2);
+if(codes.c3) fillDigit('d2','MOD 03',codes.c3);
+
+/* ---- grafica nucleului: reactor pulsând ---- */
+const core=$('#core'), cg=core.getContext('2d');
+const CW=core.width, CH=core.height;
+let ct0=performance.now();
+function drawCore(now){
+  const t=(now-ct0)/1000;
+  cg.clearRect(0,0,CW,CH);
+  cg.fillStyle='#070b11';cg.fillRect(0,0,CW,CH);
+  const cx=CW/2, cy=CH/2;
+  // inele de containment
+  for(let i=0;i<4;i++){
+    const r=40+i*26+Math.sin(t*2+i)*3;
+    cg.strokeStyle=`rgba(79,214,232,${0.3-i*0.05})`;cg.lineWidth=2;
+    cg.beginPath();cg.ellipse(cx,cy,r*2.4,r,0,0,7);cg.stroke();
+  }
+  // miez pulsant
+  const pulse=0.6+0.4*Math.sin(t*4);
+  const cgr=cg.createRadialGradient(cx,cy,4,cx,cy,70*pulse);
+  cgr.addColorStop(0,'#fff');cgr.addColorStop(.3,'#5bc0ff');cgr.addColorStop(1,'transparent');
+  cg.fillStyle=cgr;cg.beginPath();cg.arc(cx,cy,70*pulse,0,7);cg.fill();
+  // conducte laterale
+  cg.strokeStyle='rgba(91,192,255,.3)';cg.lineWidth=6;
+  cg.beginPath();cg.moveTo(0,cy);cg.lineTo(cx-90,cy);cg.moveTo(CW,cy);cg.lineTo(cx+90,cy);cg.stroke();
+  // scântei de date
+  for(let i=0;i<8;i++){
+    const a=t*1.5+i*0.8, rr=90+((t*60+i*30)%160);
+    cg.fillStyle='rgba(126,231,135,.7)';
+    cg.beginPath();cg.arc(cx+Math.cos(a)*rr*2.2,cy+Math.sin(a)*rr,2,0,7);cg.fill();
+  }
+  cg.fillStyle='#4a6a8a';cg.font='11px DM Mono, monospace';
+  cg.fillText('REACTOR · AȘTEPTARE COD DE REPORNIRE', 16, 22);
+  coreRAF=requestAnimationFrame(drawCore);
+}
+let coreRAF=requestAnimationFrame(drawCore);
+
+/* ---- verificare cod final ---- */
+$('#checkFinal').onclick=()=>{
+  const guess=$('#finalCode').value.trim();
+  if(realCode.length<3){$('#fbFinal').className='feedback err center';$('#fbFinal').textContent='Lipsesc cifre — reia modulele nerezolvate.';return;}
+  if(guess===realCode){
+    clearInterval(timerId);
+    launchDeparture();
+  }else{
+    $('#fbFinal').className='feedback err center';
+    $('#fbFinal').textContent='Cod incorect. Verifică cifrele extrase din module.';
+  }
+};
+$('#restart').onclick=()=>{ location.href='index.html'; };
+
+/* ============================================================
+   ANIMAȚIA DE PLECARE — nava accelerează în warp
+   ============================================================ */
+function launchDeparture(){
+  cancelAnimationFrame(coreRAF);
+  $('#sysStat').textContent='ONLINE';$('#sysStat').classList.remove('crit');$('#sysStat').style.color='var(--ok)';
+  const ov=$('#depart'); ov.classList.add('show');
+  const cv=$('#departCv'), ctx=cv.getContext('2d');
+  function size(){cv.width=innerWidth;cv.height=innerHeight;}
+  size(); addEventListener('resize',size);
+  const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  // faze: 0-1s tremur motoare, 1-4s warp accelerat, apoi flash -> ecran de victorie
+  let t0=performance.now();
+  setTimeout(()=>{$('#departText').style.opacity='1';},200);
+  setTimeout(()=>{$('#departText').textContent='Salt în viteză de croazieră';},1600);
+
+  function frame(now){
+    const t=(now-t0)/4000;   // 0..1 pe 4 secunde
+    const W=cv.width,H=cv.height,cx=W/2,cy=H/2;
+    ctx.fillStyle='rgba(5,8,13,'+(t<0.1?1:0.35)+')';ctx.fillRect(0,0,W,H);
+    ctx.save();ctx.translate(cx,cy);
+    const N=200;
+    for(let i=0;i<N;i++){
+      const ang=((i*137.5)%360)*Math.PI/180;
+      const sr=((i*53)%100)/100;
+      const speed=t*t;
+      const r0=20+sr*60;
+      const len=6 + speed*640*sr;
+      const x0=Math.cos(ang)*r0, y0=Math.sin(ang)*r0;
+      const x1=Math.cos(ang)*(r0+len), y1=Math.sin(ang)*(r0+len);
+      ctx.strokeStyle=`rgba(190,215,255,${0.12+0.6*t})`;
+      ctx.lineWidth=1+t*2;
+      ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();
+    }
+    ctx.restore();
+    if(t>0.82){ctx.fillStyle=`rgba(255,255,255,${(t-0.82)/0.18})`;ctx.fillRect(0,0,W,H);}
+    if(t<1 && !reduce){requestAnimationFrame(frame);}
+    else{ showWin(); }
+  }
+  if(reduce){ setTimeout(showWin, 400); } else { requestAnimationFrame(frame); }
+}
+
+function showWin(){
+  $('#depart').classList.remove('show');
+  $('#coreSection').style.display='none';
+  document.querySelector('.rail').style.display='none';
+  $('#winSection').style.display='block';
+  const left=Math.max(0,window.__timeLeft||0);
+  $('#finalTime').textContent=fmtTime(left);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Modul 01 — Captura orbitală</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo"><b>ARV · KEPLER<i>9</i></b><span>Punte gravitațională</span></div>
+    <div class="status">
+      <div class="stat"><span class="k">Oxigen</span><span class="v" id="o2">14:00</span></div>
+      <div class="stat"><span class="k">Coduri</span><span class="v" id="codeCount">0 / 3</span></div>
+    </div>
+  </header>
+
+  <div class="rail" id="rail"></div>
+
+  <section class="room enter">
+    <h2>Modul 01 — Captura orbitală</h2>
+    <div class="rlead">Instrument: propulsor de manevră · Fizică: mecanică orbitală</div>
+    <p class="story">Sonda de recunoaștere plutește în derivă spre planeta pitică Elara. Pune-o pe o
+       <b>orbită circulară stabilă</b> reglând viteza de injecție. Prea mică → se prăbușește;
+       prea mare → scapă. Există o singură viteză corectă pentru raza aleasă.</p>
+
+    <div class="grid2">
+      <div class="stage"><canvas id="cv1" width="560" height="420"></canvas></div>
+      <div class="readout">
+        <h3>Consolă propulsor</h3>
+        <div class="dial">
+          <label>Raza orbitei <b><span id="r1v">—</span> Mm</b></label>
+          <input type="range" id="r1" min="125" max="255" value="125" step="5">
+        </div>
+        <div class="dial">
+          <label>Viteză injecție <b><span id="v1v">1.50</span> km/s</b></label>
+          <input type="range" id="v1" min="1.50" max="6.00" value="1.50" step="0.01">
+        </div>
+        <div class="metrics">
+          <div class="metric"><div class="k">Status orbită</div><div class="v" id="vneed">—</div></div>
+          <div class="metric"><div class="k">Excentricitate</div><div class="v" id="ecc">—</div></div>
+        </div>
+        <button class="btn ghost" id="launch1" style="margin-bottom:8px">↻ Lansează sonda</button>
+        <button class="btn" id="check1" disabled>Blochează orbita</button>
+        <div class="feedback" id="fb1"></div>
+        <div class="codeout" id="code1">
+          <div class="lab">Cod recuperat · poziția 1</div>
+          <div class="frag" id="frag1">?</div>
+        </div>
+        <details>
+          <summary>Fișă tehnică</summary>
+          <div class="body">
+            Orbită circulară: forța gravitațională = forța centripetă:<br>
+            <code>GMm/r² = mv²/r</code> ⟹ <code>v = √(GM/r)</code><br><br>
+            Aici <code>GM = 1.843×10¹⁵ m³/s²</code> (planeta Elara).
+            Raza în metri (1 Mm = 10⁶ m), calculează v în m/s, împarte la 1000 pentru km/s.
+            Reglează sliderul până orbita e stabilă.
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script src="shared.js"></script>
+<script>
+/* --- parametri din seed --- */
+const seed=getSeed();
+if(seed===null){ location.href='index.html'; }
+const P=buildParams(seed);
+
+startOxygen(document.getElementById('o2'), ()=>{ location.href=nextURL('gameover.html'); });
+renderRail(document.getElementById('rail'), 0);
+document.getElementById('codeCount').textContent=(getCodes().c1?1:0)+' / 3';
+
+/* --- setare rază țintă din seed; slider pornește departe de soluție --- */
+const GMpx_CONST=P.GMpx, PXPERMM=P.PXPERMM, CX=280, CY=210;
+const vNeeded=P.vNeeded;
+const r1El=$('#r1'), v1El=$('#v1');
+// rază fixă per joc (determinată de seed); viteza e ce trebuie calculat
+r1El.value=P.r1; r1El.min=P.r1; r1El.max=P.r1;
+$('#r1v').textContent=P.r1;
+v1El.value=1.50; $('#v1v').textContent='1.50';
+
+const cv1=$('#cv1'), x1=cv1.getContext('2d');
+let sim1=null;
+
+function drawScene1(){
+  x1.clearRect(0,0,560,420);
+  x1.fillStyle='#070b11';x1.fillRect(0,0,560,420);
+  for(let i=0;i<70;i++){const sx=(i*97)%560,sy=(i*53)%420;x1.fillStyle='rgba(200,220,255,'+(0.05+(i%5)*0.03)+')';x1.fillRect(sx,sy,1,1);}
+  const rad=22;
+  const gr=x1.createRadialGradient(CX-6,CY-6,4,CX,CY,rad);
+  gr.addColorStop(0,'#ffd9a0');gr.addColorStop(.5,'#d98a3a');gr.addColorStop(1,'#5a3410');
+  x1.fillStyle=gr;x1.beginPath();x1.arc(CX,CY,rad,0,7);x1.fill();
+  const rTarget=P.r1*PXPERMM;
+  x1.setLineDash([4,6]);x1.strokeStyle='rgba(91,192,255,.25)';x1.lineWidth=1;
+  x1.beginPath();x1.arc(CX,CY,rTarget,0,7);x1.stroke();x1.setLineDash([]);
+  if(sim1){
+    x1.strokeStyle='rgba(79,214,232,.5)';x1.lineWidth=1.5;x1.beginPath();
+    sim1.trail.forEach((p,i)=>{i?x1.lineTo(p.x,p.y):x1.moveTo(p.x,p.y);});x1.stroke();
+    x1.fillStyle=sim1.captured?'#7ee787':(sim1.alive?'#4fd6e8':'#ff6b6b');
+    x1.shadowBlur=12;x1.shadowColor=x1.fillStyle;
+    x1.beginPath();x1.arc(sim1.x,sim1.y,4,0,7);x1.fill();x1.shadowBlur=0;
+  }
+}
+
+const KMS_PER_PXV = 3.20/Math.sqrt(GMpx_CONST/(180*PXPERMM));
+let raf1=null;
+function launch1(){
+  cancelAnimationFrame(raf1);
+  const r_px=P.r1*PXPERMM;
+  const v_px=(+v1El.value)/KMS_PER_PXV;   // km/s -> px/timp, aceeași scalare ca vNeeded
+  sim1={x:CX+r_px,y:CY,vx:0,vy:-v_px,trail:[],alive:true,captured:false,frames:0};
+  let minR=1e9,maxR=0; const DT=0.7,SUB=8;
+  function step(){
+    for(let k=0;k<SUB;k++){
+      const dx=sim1.x-CX,dy=sim1.y-CY,d=Math.hypot(dx,dy);
+      if(d<24){sim1.alive=false;break;}
+      const a=GMpx_CONST/(d*d);
+      sim1.vx-=a*dx/d*DT; sim1.vy-=a*dy/d*DT;
+      sim1.x+=sim1.vx*DT; sim1.y+=sim1.vy*DT;
+      minR=Math.min(minR,d);maxR=Math.max(maxR,d);
+    }
+    sim1.trail.push({x:sim1.x,y:sim1.y});
+    if(sim1.trail.length>500)sim1.trail.shift();
+    sim1.frames++;
+    const dNow=Math.hypot(sim1.x-CX,sim1.y-CY);
+    if(dNow>320)sim1.alive=false;
+    const ecc=(maxR-minR)/(maxR+minR||1);
+    $('#ecc').textContent=isFinite(ecc)?ecc.toFixed(3):'—';
+    drawScene1();
+    if(!sim1.alive){
+      $('#fb1').className='feedback err'; $('#vneed').style.color='var(--err)';
+      if(dNow>320){$('#vneed').textContent='PREA MARE';$('#fb1').textContent='Sonda a scăpat în spațiu — viteză prea mare.';}
+      else{$('#vneed').textContent='PREA MICĂ';$('#fb1').textContent='Sonda s-a prăbușit — viteză prea mică.';}
+      $('#check1').disabled=true; return;
+    }
+    if(sim1.frames>150){
+      sim1.captured=ecc<0.055; drawScene1();
+      if(sim1.captured){
+        $('#fb1').className='feedback ok';
+        $('#vneed').textContent='STABILĂ';$('#vneed').style.color='var(--ok)';
+        $('#fb1').textContent='Orbită circulară stabilă. Blochează pentru a extrage codul.';
+        $('#check1').disabled=false;
+      }else{
+        $('#fb1').className='feedback err';$('#vneed').style.color='var(--err)';
+        $('#vneed').textContent=(maxR>P.r1*PXPERMM+4)?'PREA MARE':'PREA MICĂ';
+        $('#fb1').textContent='Orbită eliptică (ecc='+ecc.toFixed(3)+'). Recalculează v = √(GM/r).';
+        $('#check1').disabled=true;
+      }
+      return;
+    }
+    raf1=requestAnimationFrame(step);
+  }
+  step();
+}
+
+v1El.oninput=e=>{$('#v1v').textContent=(+e.target.value).toFixed(2);$('#vneed').textContent='—';$('#vneed').style.color='';$('#check1').disabled=true;};
+$('#launch1').onclick=launch1;
+$('#check1').onclick=()=>{
+  if(sim1&&sim1.captured){
+    $('#frag1').textContent=P.dig1; $('#code1').classList.add('show');
+    $('#fb1').className='feedback ok'; $('#fb1').textContent='Cod extras. Trecere spre Modul 02...';
+    setTimeout(()=>{
+      playTransition('corridor','Traversare coridor','Modul 02 · Laborator spectral',
+        nextURL('modul02.html',{c1:P.dig1}));
+    },1200);
+  }
+};
+drawScene1();
+</script>
+</body>
+</html>
