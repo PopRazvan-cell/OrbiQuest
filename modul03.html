@@ -3,13 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Modul 03 — Triangulația stelară</title>
+<title>Modul 03 — Reactor Cuantic · OrbiQuest</title>
 <link rel="stylesheet" href="style.css">
+<style>:root{--accent:#FF3366;--accent-2:#ff7d9c;--accent-deep:#a8102f;--accent-glow:rgba(255,51,102,.55);--accent-soft:rgba(255,51,102,.10);--hull:rgba(255,51,102,.18);--grid:rgba(255,51,102,.05)}</style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="logo"><b>ARV · KEPLER<i>9</i></b><span>Observator astrometric</span></div>
+    <div class="logo"><b>ORBI<i>QUEST</i></b><span>Reactor Cuantic</span></div>
     <div class="status">
       <div class="stat"><span class="k">Oxigen</span><span class="v" id="o2">14:00</span></div>
       <div class="stat"><span class="k">Coduri</span><span class="v" id="codeCount">2 / 3</span></div>
@@ -19,7 +20,7 @@
   <div class="rail" id="rail"></div>
 
   <section class="room enter">
-    <h2>Modul 03 — Triangulația stelară</h2>
+    <h2>Modul 03 — <em>Reactorul Cuantic</em></h2>
     <div class="rlead">Instrument: astrometru · Fizică: paralaxă trigonometrică</div>
     <p class="story">Ultimul modul cere o reper de navigație: distanța până la steaua Vega-B. O măsori
        prin paralaxă — observi steaua din două poziții opuse ale orbitei Pământului (la 6 luni) și
@@ -59,6 +60,7 @@
 
 <script src="shared.js"></script>
 <script>
+openAirlockIn();
 const seed=getSeed();
 if(seed===null){ location.href='index.html'; }
 const P=buildParams(seed);
@@ -88,12 +90,12 @@ function drawParallax(){
   x3.strokeStyle='rgba(107,125,143,.3)';x3.setLineDash([3,4]);
   x3.beginPath();x3.ellipse(280,370,90,16,0,0,7);x3.stroke();x3.setLineDash([]);
   const starX=epochJan?296:264, starY=150;
-  x3.strokeStyle='rgba(91,192,255,.4)';x3.lineWidth=1;x3.setLineDash([2,4]);
+  x3.strokeStyle='rgba(255,125,156,.4)';x3.lineWidth=1;x3.setLineDash([2,4]);
   x3.beginPath();x3.moveTo(ex,370);x3.lineTo(starX,starY);x3.stroke();x3.setLineDash([]);
-  x3.fillStyle='#5bc0ff';x3.shadowBlur=14;x3.shadowColor='#5bc0ff';
+  x3.fillStyle='#ff7d9c';x3.shadowBlur=14;x3.shadowColor='#ff7d9c';
   x3.beginPath();x3.arc(starX,starY,5,0,7);x3.fill();x3.shadowBlur=0;
   x3.fillStyle='#4a6a8a';x3.font='11px DM Mono';x3.fillText('Vega-B',starX+10,starY);
-  x3.globalAlpha=.35;x3.fillStyle='#4fd6e8';
+  x3.globalAlpha=.35;x3.fillStyle='#ff7d9c';
   x3.beginPath();x3.arc(epochJan?264:296,starY,4,0,7);x3.fill();x3.globalAlpha=1;
   x3.fillStyle='#4a6a8a';x3.fillText('CÂMP STELAR · fundal fix',20,30);
 }

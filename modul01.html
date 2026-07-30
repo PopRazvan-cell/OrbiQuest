@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Modul 01 — Captura orbitală</title>
+<title>Modul 01 — Laborator Astrofizică · OrbiQuest</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="logo"><b>ARV · KEPLER<i>9</i></b><span>Punte gravitațională</span></div>
+    <div class="logo"><b>ORBI<i>QUEST</i></b><span>Laborator Astrofizică</span></div>
     <div class="status">
       <div class="stat"><span class="k">Oxigen</span><span class="v" id="o2">14:00</span></div>
       <div class="stat"><span class="k">Coduri</span><span class="v" id="codeCount">0 / 3</span></div>
@@ -19,7 +19,7 @@
   <div class="rail" id="rail"></div>
 
   <section class="room enter">
-    <h2>Modul 01 — Captura orbitală</h2>
+    <h2>Modul 01 — <em>Laboratorul de Astrofizică</em></h2>
     <div class="rlead">Instrument: propulsor de manevră · Fizică: mecanică orbitală</div>
     <p class="story">Sonda de recunoaștere plutește în derivă spre planeta pitică Elara. Pune-o pe o
        <b>orbită circulară stabilă</b> reglând viteza de injecție. Prea mică → se prăbușește;
@@ -66,6 +66,7 @@
 <script src="shared.js"></script>
 <script>
 /* --- parametri din seed --- */
+openAirlockIn();
 const seed=getSeed();
 if(seed===null){ location.href='index.html'; }
 const P=buildParams(seed);
@@ -100,22 +101,27 @@ function drawScene1(){
   if(sim1){
     x1.strokeStyle='rgba(79,214,232,.5)';x1.lineWidth=1.5;x1.beginPath();
     sim1.trail.forEach((p,i)=>{i?x1.lineTo(p.x,p.y):x1.moveTo(p.x,p.y);});x1.stroke();
-    x1.fillStyle=sim1.captured?'#7ee787':(sim1.alive?'#4fd6e8':'#ff6b6b');
+    x1.fillStyle=sim1.captured?'#2fffa8':(sim1.alive?'#00F0FF':'#FF3366');
     x1.shadowBlur=12;x1.shadowColor=x1.fillStyle;
     x1.beginPath();x1.arc(sim1.x,sim1.y,4,0,7);x1.fill();x1.shadowBlur=0;
   }
 }
 
 const KMS_PER_PXV = 3.20/Math.sqrt(GMpx_CONST/(180*PXPERMM));
-let raf1=null;
+let raf1=null, physId=null;
 function launch1(){
-  cancelAnimationFrame(raf1);
+  cancelAnimationFrame(raf1); if(physId)clearInterval(physId);
   const r_px=P.r1*PXPERMM;
   const v_px=(+v1El.value)/KMS_PER_PXV;   // km/s -> px/timp, aceeași scalare ca vNeeded
   sim1={x:CX+r_px,y:CY,vx:0,vy:-v_px,trail:[],alive:true,captured:false,frames:0};
-  let minR=1e9,maxR=0; const DT=0.7,SUB=8;
-  function step(){
-    for(let k=0;k<SUB;k++){
+  let minR=1e9,maxR=0; const DT=0.7;
+  let done=false;
+  // FIZICA: avansează pe timp real (setInterval), independent de fps-ul randării.
+  // Astfel glassmorphism/backdrop-blur nu încetinește verdictul.
+  function physicsTick(){
+    if(done) return;
+    // câți micro-pași facem per tick de 30ms (echiv. ~16 pași/frame la 60fps)
+    for(let k=0;k<16;k++){
       const dx=sim1.x-CX,dy=sim1.y-CY,d=Math.hypot(dx,dy);
       if(d<24){sim1.alive=false;break;}
       const a=GMpx_CONST/(d*d);
@@ -130,15 +136,16 @@ function launch1(){
     if(dNow>320)sim1.alive=false;
     const ecc=(maxR-minR)/(maxR+minR||1);
     $('#ecc').textContent=isFinite(ecc)?ecc.toFixed(3):'—';
-    drawScene1();
     if(!sim1.alive){
+      done=true;clearInterval(physId);
       $('#fb1').className='feedback err'; $('#vneed').style.color='var(--err)';
       if(dNow>320){$('#vneed').textContent='PREA MARE';$('#fb1').textContent='Sonda a scăpat în spațiu — viteză prea mare.';}
       else{$('#vneed').textContent='PREA MICĂ';$('#fb1').textContent='Sonda s-a prăbușit — viteză prea mică.';}
       $('#check1').disabled=true; return;
     }
-    if(sim1.frames>150){
-      sim1.captured=ecc<0.055; drawScene1();
+    if(sim1.frames>75){
+      done=true;clearInterval(physId);
+      sim1.captured=ecc<0.055;
       if(sim1.captured){
         $('#fb1').className='feedback ok';
         $('#vneed').textContent='STABILĂ';$('#vneed').style.color='var(--ok)';
@@ -152,9 +159,11 @@ function launch1(){
       }
       return;
     }
-    raf1=requestAnimationFrame(step);
   }
-  step();
+  // RANDARE separată (rulează cât poate, nu afectează fizica)
+  function render(){ if(done){drawScene1();return;} drawScene1(); raf1=requestAnimationFrame(render); }
+  physId=setInterval(physicsTick,30);   // ~33 tick-uri/s garantat
+  render();
 }
 
 v1El.oninput=e=>{$('#v1v').textContent=(+e.target.value).toFixed(2);$('#vneed').textContent='—';$('#vneed').style.color='';$('#check1').disabled=true;};

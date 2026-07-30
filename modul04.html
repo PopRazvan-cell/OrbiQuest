@@ -3,76 +3,148 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Core — Secvență de repornire</title>
+<title>Terminal de evadare — OrbiQuest</title>
 <link rel="stylesheet" href="style.css">
 <style>
-  .lockrow{display:flex;gap:10px;justify-content:center;margin:18px 0;flex-wrap:wrap}
-  .digit{width:64px;height:80px;background:#070b11;border:1px solid var(--hull);border-radius:8px;
-    display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-size:40px;color:var(--ink-dim);position:relative}
-  .digit .cap{position:absolute;top:6px;font-size:9px;letter-spacing:.1em;color:var(--ink-dim)}
-  .digit.filled{color:var(--accent-2);border-color:var(--accent-dim);text-shadow:0 0 16px rgba(91,192,255,.5)}
-  #finalCode{width:100%;max-width:320px;margin:0 auto;display:block;text-align:center;background:#070b11;
-    border:1px solid var(--hull);border-radius:8px;color:var(--accent-2);font-family:'Oswald',sans-serif;
-    font-size:28px;letter-spacing:.4em;padding:12px}
-  .core-canvas{border:1px solid var(--hull);border-radius:10px;background:#070b11;margin-bottom:18px}
-  .win{text-align:center;padding:30px 10px;display:none}
-  .win.show{display:block;animation:rise .6s}
-  .win h2{font-size:34px;color:var(--ok);text-shadow:0 0 30px rgba(126,231,135,.4)}
-  .win p{color:var(--ink);margin-top:10px}
-  /* overlay de plecare (warp) full-screen */
-  #depart{position:fixed;inset:0;z-index:10001;background:#05080d;display:none}
+  /* tema terminal: cyan rece + verde succes */
+  :root{--accent:#00F0FF;--accent-2:#7cf7ff;--accent-deep:#0090a8;--accent-glow:rgba(0,240,255,.5);--accent-soft:rgba(0,240,255,.08)}
+
+  .terminal{max-width:520px;margin:0 auto}
+  /* AFIȘAJ LED digital */
+  .led-display{
+    background:#02060a;border:1px solid var(--hull);padding:22px;margin-bottom:22px;position:relative;
+    clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);
+    box-shadow:inset 0 0 40px rgba(0,240,255,.12),inset 0 0 0 1px rgba(0,0,0,.6)}
+  .led-display .lbl{font-size:9px;letter-spacing:.34em;color:var(--ink-dim);text-transform:uppercase;text-align:center;margin-bottom:12px;font-family:'Rajdhani',sans-serif}
+  .led-row{display:flex;gap:14px;justify-content:center}
+  .led{width:70px;height:96px;background:linear-gradient(180deg,#04212a,#020c11);
+    border:1px solid rgba(0,240,255,.25);display:flex;align-items:center;justify-content:center;
+    font-family:'Orbitron',sans-serif;font-size:52px;font-weight:800;color:#0a3f4a;position:relative;
+    clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
+  .led.on{color:var(--accent-2);text-shadow:0 0 20px var(--accent-glow),0 0 40px var(--accent-glow)}
+  .led .cap{position:absolute;top:6px;font-size:8px;letter-spacing:.1em;color:var(--ink-dim);font-family:'Rajdhani',sans-serif}
+  .led .cursor{position:absolute;bottom:12px;width:34px;height:4px;background:var(--accent);opacity:0;box-shadow:0 0 12px var(--accent-glow)}
+  .led.active .cursor{animation:blink 1s step-end infinite}
+  @keyframes blink{50%{opacity:1}}
+
+  /* KEYPAD metalic */
+  .keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:340px;margin:0 auto}
+  .key{
+    aspect-ratio:1.4;border:1px solid rgba(255,255,255,.08);cursor:pointer;user-select:none;
+    background:linear-gradient(180deg,#1a2336,#0d1420);color:var(--ink);
+    font-family:'Orbitron',sans-serif;font-size:26px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;transition:.12s;position:relative;
+    clip-path:polygon(9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 9px);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 4px 12px rgba(0,0,0,.5)}
+  .key:hover{border-color:var(--accent-deep);color:var(--accent-2);box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 0 20px var(--accent-soft)}
+  .key:active,.key.press{transform:translateY(2px);background:linear-gradient(180deg,#0d1420,#1a2336);color:var(--accent);box-shadow:inset 0 0 20px var(--accent-soft)}
+  .key.wide{grid-column:span 1}
+  .key.fn{font-size:13px;letter-spacing:.06em;color:var(--ink-dim)}
+  .key.enter{background:linear-gradient(180deg,var(--accent),var(--accent-deep));color:#02060a}
+  .key.enter:hover{filter:brightness(1.12)}
+
+  .core-canvas{border:1px solid var(--hull);background:#02060a;margin-bottom:22px;width:100%;
+    clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px)}
+
+  /* POP-UP SUCCES */
+  #accessGranted{position:fixed;inset:0;z-index:10002;display:none;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 50% 50%,rgba(47,255,168,.12),rgba(2,6,10,.96))}
+  #accessGranted.show{display:flex;animation:agFade .5s ease}
+  @keyframes agFade{from{opacity:0}}
+  #accessGranted canvas{position:absolute;inset:0;width:100%;height:100%}
+  .ag-box{position:relative;z-index:2;text-align:center;padding:40px}
+  .ag-box .ring{width:120px;height:120px;margin:0 auto 24px;border:3px solid var(--ok);border-radius:50%;
+    display:flex;align-items:center;justify-content:center;box-shadow:0 0 50px rgba(47,255,168,.6),inset 0 0 30px rgba(47,255,168,.3);
+    animation:agRing 2s ease infinite}
+  @keyframes agRing{50%{box-shadow:0 0 80px rgba(47,255,168,.9),inset 0 0 40px rgba(47,255,168,.5)}}
+  .ag-box .ring svg{width:56px;height:56px;stroke:var(--ok);fill:none;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
+  .ag-box h1{font-family:'Orbitron',sans-serif;font-size:clamp(30px,6vw,52px);font-weight:900;letter-spacing:.12em;
+    color:var(--ok);text-shadow:0 0 40px rgba(47,255,168,.7);text-transform:uppercase}
+  .ag-box p{color:var(--ink);margin-top:12px;font-family:'Rajdhani',sans-serif;font-size:15px;letter-spacing:.05em}
+
+  /* overlay plecare warp */
+  #depart{position:fixed;inset:0;z-index:10001;background:#02060a;display:none}
   #depart.show{display:block}
   #depart canvas{width:100%;height:100%}
   #departText{position:absolute;left:0;right:0;bottom:12%;text-align:center;z-index:2;
-    font-family:'Oswald',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:var(--accent-2);
-    font-size:24px;text-shadow:0 0 24px rgba(91,192,255,.6);opacity:0;transition:opacity 1s}
+    font-family:'Orbitron',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:var(--accent-2);
+    font-size:22px;text-shadow:0 0 24px var(--accent-glow);opacity:0;transition:opacity 1s}
+
+  .win{text-align:center;padding:30px 10px}
+  .win h2{font-family:'Orbitron',sans-serif;font-size:34px;color:var(--ok);text-shadow:0 0 30px rgba(47,255,168,.5);text-transform:uppercase}
+  .win p{color:var(--ink);margin-top:10px;font-family:'Rajdhani',sans-serif}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="logo"><b>ARV · KEPLER<i>9</i></b><span>Nucleu de comandă</span></div>
+    <div class="logo"><b>ORBI<i>QUEST</i></b><span>Terminal de evadare</span></div>
     <div class="status">
       <div class="stat"><span class="k">Oxigen</span><span class="v" id="o2">14:00</span></div>
-      <div class="stat"><span class="k">Sisteme</span><span class="v crit" id="sysStat">AVARIATE</span></div>
+      <div class="stat"><span class="k">Sisteme</span><span class="v crit" id="sysStat">BLOCAT</span></div>
     </div>
   </header>
 
   <div class="rail" id="rail"></div>
 
   <section class="room enter" id="coreSection">
-    <h2>Core — Secvență de repornire</h2>
-    <div class="rlead">Introdu codul de 3 cifre în ordinea modulelor</div>
+    <h2>Terminal — <em>Secvență de evadare</em></h2>
+    <div class="rlead">Introdu codul de 3 cifre colectat din module</div>
 
-    <canvas id="core" class="core-canvas" width="920" height="220"></canvas>
+    <canvas id="core" class="core-canvas" width="920" height="180"></canvas>
 
-    <p class="story">Fiecare modul reparat ți-a dat o cifră. Computerul principal așteaptă codul complet.
-       O singură secvență corectă repornește motoarele.</p>
+    <p class="story">Fiecare modul reparat ți-a dat o cifră. Seiful de comandă așteaptă codul complet.
+       Tastează-l pe keypad și apasă <b>ENTER</b>.</p>
 
-    <div class="lockrow">
-      <div class="digit" id="d0"><span class="cap">MOD 01</span>?</div>
-      <div class="digit" id="d1"><span class="cap">MOD 02</span>?</div>
-      <div class="digit" id="d2"><span class="cap">MOD 03</span>?</div>
+    <div class="terminal">
+      <div class="led-display">
+        <div class="lbl">◦ Cod de acces ◦</div>
+        <div class="led-row">
+          <div class="led" id="led0"><span class="cap">MOD 01</span><span>_</span><span class="cursor"></span></div>
+          <div class="led" id="led1"><span class="cap">MOD 02</span><span>_</span><span class="cursor"></span></div>
+          <div class="led" id="led2"><span class="cap">MOD 03</span><span>_</span><span class="cursor"></span></div>
+        </div>
+      </div>
+
+      <div class="keypad" id="keypad">
+        <div class="key" data-k="1">1</div>
+        <div class="key" data-k="2">2</div>
+        <div class="key" data-k="3">3</div>
+        <div class="key" data-k="4">4</div>
+        <div class="key" data-k="5">5</div>
+        <div class="key" data-k="6">6</div>
+        <div class="key" data-k="7">7</div>
+        <div class="key" data-k="8">8</div>
+        <div class="key" data-k="9">9</div>
+        <div class="key fn" data-k="clear">CLR</div>
+        <div class="key" data-k="0">0</div>
+        <div class="key enter" data-k="enter">ENTER</div>
+      </div>
+      <div class="feedback center" id="fbFinal"></div>
     </div>
-
-    <input id="finalCode" inputmode="numeric" maxlength="3" placeholder="_ _ _">
-    <div style="max-width:320px;margin:12px auto 0">
-      <button class="btn" id="checkFinal">⚡ Repornește nava</button>
-    </div>
-    <div class="feedback center" id="fbFinal"></div>
   </section>
 
   <section class="room" id="winSection" style="display:none">
-    <div class="win show">
-      <h2>NAVĂ ONLINE</h2>
-      <p>Motoarele pornesc. Kepler-9 își corectează traiectoria și prinde ruta de întoarcere.</p>
+    <div class="win">
+      <h2>Nava online</h2>
+      <p>Motoarele pornesc. OrbiQuest își corectează traiectoria și prinde ruta de întoarcere.</p>
       <p style="color:var(--ink-dim);font-size:12px;margin-top:18px">Ai scăpat cu <b id="finalTime" style="color:var(--accent-2)">—</b> rezervă de oxigen · Bun venit acasă, cadet.</p>
       <button class="btn ghost" id="restart" style="max-width:240px;margin:22px auto 0">↺ Joacă din nou</button>
     </div>
   </section>
 </div>
 
-<!-- overlay animație de plecare -->
+<!-- POP-UP ACCES GARANTAT -->
+<div id="accessGranted">
+  <canvas id="agCanvas"></canvas>
+  <div class="ag-box">
+    <div class="ring"><svg viewBox="0 0 24 24"><path d="M4 12l6 6L20 6"/></svg></div>
+    <h1>Acces garantat</h1>
+    <p>Secvență validată · pornire motoare...</p>
+  </div>
+</div>
+
+<!-- overlay plecare -->
 <div id="depart">
   <canvas id="departCv"></canvas>
   <div id="departText">Motoare la putere maximă</div>
@@ -80,6 +152,7 @@
 
 <script src="shared.js"></script>
 <script>
+openAirlockIn();
 const seed=getSeed();
 if(seed===null){ location.href='index.html'; }
 const P=buildParams(seed);
@@ -88,118 +161,127 @@ const codes=getCodes();
 let timerId=startOxygen(document.getElementById('o2'), ()=>{ location.href=nextURL('gameover.html'); });
 renderRail(document.getElementById('rail'), 3);
 
-/* pre-completează cifrele obținute în afișaj */
-const realCode = ''+(codes.c1||'')+(codes.c2||'')+(codes.c3||'');
-function fillDigit(id,cap,val){
-  const el=$('#'+id);
-  el.innerHTML='<span class="cap">'+cap+'</span>'+val;
-  el.classList.add('filled');
-}
-if(codes.c1) fillDigit('d0','MOD 01',codes.c1);
-if(codes.c2) fillDigit('d1','MOD 02',codes.c2);
-if(codes.c3) fillDigit('d2','MOD 03',codes.c3);
+/* codul real din cifrele obținute; capetele LED afișează etichete */
+const realCode=''+(codes.c1||'')+(codes.c2||'')+(codes.c3||'');
+let entered='';
 
-/* ---- grafica nucleului: reactor pulsând ---- */
+function renderLED(){
+  for(let i=0;i<3;i++){
+    const led=$('#led'+i);
+    const val=entered[i];
+    const span=led.querySelector('span:not(.cap):not(.cursor)');
+    led.classList.toggle('on', val!==undefined);
+    led.classList.toggle('active', i===entered.length);
+    span.textContent = val!==undefined ? val : '_';
+  }
+}
+renderLED();
+
+/* keypad */
+$('#keypad').addEventListener('click',e=>{
+  const k=e.target.closest('.key'); if(!k) return;
+  const key=k.dataset.k;
+  k.classList.add('press'); setTimeout(()=>k.classList.remove('press'),120);
+  if(key==='clear'){ entered=''; renderLED(); clearFb(); return; }
+  if(key==='enter'){ submit(); return; }
+  if(entered.length<3){ entered+=key; renderLED(); clearFb(); }
+});
+/* tastatură fizică */
+addEventListener('keydown',e=>{
+  if(e.key>='0'&&e.key<='9'&&entered.length<3){entered+=e.key;renderLED();clearFb();}
+  else if(e.key==='Backspace'){entered=entered.slice(0,-1);renderLED();clearFb();}
+  else if(e.key==='Enter'){submit();}
+});
+function clearFb(){$('#fbFinal').textContent='';}
+
+function submit(){
+  if(entered.length<3){$('#fbFinal').className='feedback err center';$('#fbFinal').textContent='Introdu toate cele 3 cifre.';return;}
+  if(realCode.length<3){$('#fbFinal').className='feedback err center';$('#fbFinal').textContent='Lipsesc cifre — reia modulele nerezolvate.';return;}
+  if(entered===realCode){
+    clearInterval(timerId);
+    $('#sysStat').textContent='ONLINE';$('#sysStat').classList.remove('crit');$('#sysStat').style.color='var(--ok)';
+    showAccessGranted();
+  }else{
+    $('#fbFinal').className='feedback err center';$('#fbFinal').textContent='ACCES REFUZAT · cod incorect.';
+    // shake LED
+    entered=''; renderLED();
+  }
+}
+
+/* ---- reactor pulsatoriu în bara superioară ---- */
 const core=$('#core'), cg=core.getContext('2d');
-const CW=core.width, CH=core.height;
-let ct0=performance.now();
+const CW=core.width, CH=core.height; let ct0=performance.now();
 function drawCore(now){
-  const t=(now-ct0)/1000;
-  cg.clearRect(0,0,CW,CH);
-  cg.fillStyle='#070b11';cg.fillRect(0,0,CW,CH);
-  const cx=CW/2, cy=CH/2;
-  // inele de containment
-  for(let i=0;i<4;i++){
-    const r=40+i*26+Math.sin(t*2+i)*3;
-    cg.strokeStyle=`rgba(79,214,232,${0.3-i*0.05})`;cg.lineWidth=2;
-    cg.beginPath();cg.ellipse(cx,cy,r*2.4,r,0,0,7);cg.stroke();
-  }
-  // miez pulsant
+  const t=(now-ct0)/1000; cg.clearRect(0,0,CW,CH);
+  cg.fillStyle='#02060a';cg.fillRect(0,0,CW,CH);
+  const cx=CW/2,cy=CH/2;
+  for(let i=0;i<4;i++){const r=26+i*20+Math.sin(t*2+i)*3;cg.strokeStyle='rgba(0,240,255,'+(0.3-i*0.05)+')';cg.lineWidth=2;cg.beginPath();cg.ellipse(cx,cy,r*2.6,r,0,0,7);cg.stroke();}
   const pulse=0.6+0.4*Math.sin(t*4);
-  const cgr=cg.createRadialGradient(cx,cy,4,cx,cy,70*pulse);
-  cgr.addColorStop(0,'#fff');cgr.addColorStop(.3,'#5bc0ff');cgr.addColorStop(1,'transparent');
-  cg.fillStyle=cgr;cg.beginPath();cg.arc(cx,cy,70*pulse,0,7);cg.fill();
-  // conducte laterale
-  cg.strokeStyle='rgba(91,192,255,.3)';cg.lineWidth=6;
-  cg.beginPath();cg.moveTo(0,cy);cg.lineTo(cx-90,cy);cg.moveTo(CW,cy);cg.lineTo(cx+90,cy);cg.stroke();
-  // scântei de date
-  for(let i=0;i<8;i++){
-    const a=t*1.5+i*0.8, rr=90+((t*60+i*30)%160);
-    cg.fillStyle='rgba(126,231,135,.7)';
-    cg.beginPath();cg.arc(cx+Math.cos(a)*rr*2.2,cy+Math.sin(a)*rr,2,0,7);cg.fill();
-  }
-  cg.fillStyle='#4a6a8a';cg.font='11px DM Mono, monospace';
-  cg.fillText('REACTOR · AȘTEPTARE COD DE REPORNIRE', 16, 22);
+  const cgr=cg.createRadialGradient(cx,cy,3,cx,cy,60*pulse);
+  cgr.addColorStop(0,'#fff');cgr.addColorStop(.3,'#00F0FF');cgr.addColorStop(1,'transparent');
+  cg.fillStyle=cgr;cg.beginPath();cg.arc(cx,cy,60*pulse,0,7);cg.fill();
+  cg.strokeStyle='rgba(0,240,255,.3)';cg.lineWidth=5;cg.beginPath();cg.moveTo(0,cy);cg.lineTo(cx-70,cy);cg.moveTo(CW,cy);cg.lineTo(cx+70,cy);cg.stroke();
+  cg.fillStyle='#0a3f4a';cg.font="11px 'Rajdhani',monospace";cg.fillText('REACTOR · AȘTEPTARE COD',16,22);
   coreRAF=requestAnimationFrame(drawCore);
 }
 let coreRAF=requestAnimationFrame(drawCore);
 
-/* ---- verificare cod final ---- */
-$('#checkFinal').onclick=()=>{
-  const guess=$('#finalCode').value.trim();
-  if(realCode.length<3){$('#fbFinal').className='feedback err center';$('#fbFinal').textContent='Lipsesc cifre — reia modulele nerezolvate.';return;}
-  if(guess===realCode){
-    clearInterval(timerId);
-    launchDeparture();
-  }else{
-    $('#fbFinal').className='feedback err center';
-    $('#fbFinal').textContent='Cod incorect. Verifică cifrele extrase din module.';
-  }
-};
-$('#restart').onclick=()=>{ location.href='index.html'; };
-
-/* ============================================================
-   ANIMAȚIA DE PLECARE — nava accelerează în warp
-   ============================================================ */
-function launchDeparture(){
+/* ---- ACCES GARANTAT: confetti/particule, apoi plecare ---- */
+function showAccessGranted(){
   cancelAnimationFrame(coreRAF);
-  $('#sysStat').textContent='ONLINE';$('#sysStat').classList.remove('crit');$('#sysStat').style.color='var(--ok)';
+  const ag=$('#accessGranted'); ag.classList.add('show');
+  const cv=$('#agCanvas'), ctx=cv.getContext('2d');
+  function size(){cv.width=innerWidth;cv.height=innerHeight;}
+  size();addEventListener('resize',size);
+  const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
+  // particule verzi/cyan care se împrăștie
+  const parts=[];
+  for(let i=0;i<120;i++){parts.push({x:cv.width/2,y:cv.height/2,a:Math.random()*6.28,v:2+Math.random()*7,c:Math.random()<0.5?'#2fffa8':'#00F0FF',s:2+Math.random()*3});}
+  let t0=performance.now();
+  function frame(now){
+    const t=(now-t0)/1000; ctx.clearRect(0,0,cv.width,cv.height);
+    parts.forEach(p=>{const x=p.x+Math.cos(p.a)*p.v*t*60;const y=p.y+Math.sin(p.a)*p.v*t*60+t*t*40;
+      ctx.globalAlpha=Math.max(0,1-t/2.2);ctx.fillStyle=p.c;ctx.fillRect(x,y,p.s,p.s);});
+    ctx.globalAlpha=1;
+    if(t<2.2 && !reduce) requestAnimationFrame(frame);
+  }
+  if(!reduce) requestAnimationFrame(frame);
+  // după celebrare -> plecare warp
+  setTimeout(()=>{ ag.classList.remove('show'); launchDeparture(); }, reduce?600:2200);
+}
+
+/* ---- plecarea navei (warp) ---- */
+function launchDeparture(){
   const ov=$('#depart'); ov.classList.add('show');
   const cv=$('#departCv'), ctx=cv.getContext('2d');
   function size(){cv.width=innerWidth;cv.height=innerHeight;}
-  size(); addEventListener('resize',size);
+  size();addEventListener('resize',size);
   const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
-
-  // faze: 0-1s tremur motoare, 1-4s warp accelerat, apoi flash -> ecran de victorie
   let t0=performance.now();
   setTimeout(()=>{$('#departText').style.opacity='1';},200);
   setTimeout(()=>{$('#departText').textContent='Salt în viteză de croazieră';},1600);
-
   function frame(now){
-    const t=(now-t0)/4000;   // 0..1 pe 4 secunde
-    const W=cv.width,H=cv.height,cx=W/2,cy=H/2;
-    ctx.fillStyle='rgba(5,8,13,'+(t<0.1?1:0.35)+')';ctx.fillRect(0,0,W,H);
+    const t=(now-t0)/4000; const W=cv.width,H=cv.height,cx=W/2,cy=H/2;
+    ctx.fillStyle='rgba(2,6,10,'+(t<0.1?1:0.35)+')';ctx.fillRect(0,0,W,H);
     ctx.save();ctx.translate(cx,cy);
-    const N=200;
-    for(let i=0;i<N;i++){
-      const ang=((i*137.5)%360)*Math.PI/180;
-      const sr=((i*53)%100)/100;
-      const speed=t*t;
-      const r0=20+sr*60;
-      const len=6 + speed*640*sr;
-      const x0=Math.cos(ang)*r0, y0=Math.sin(ang)*r0;
-      const x1=Math.cos(ang)*(r0+len), y1=Math.sin(ang)*(r0+len);
-      ctx.strokeStyle=`rgba(190,215,255,${0.12+0.6*t})`;
-      ctx.lineWidth=1+t*2;
-      ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();
-    }
+    for(let i=0;i<200;i++){const ang=((i*137.5)%360)*Math.PI/180;const sr=((i*53)%100)/100;const r0=20+sr*60;const len=6+t*t*660*sr;
+      ctx.strokeStyle='rgba(190,235,255,'+(0.12+0.6*t)+')';ctx.lineWidth=1+t*2;
+      ctx.beginPath();ctx.moveTo(Math.cos(ang)*r0,Math.sin(ang)*r0);ctx.lineTo(Math.cos(ang)*(r0+len),Math.sin(ang)*(r0+len));ctx.stroke();}
     ctx.restore();
-    if(t>0.82){ctx.fillStyle=`rgba(255,255,255,${(t-0.82)/0.18})`;ctx.fillRect(0,0,W,H);}
-    if(t<1 && !reduce){requestAnimationFrame(frame);}
-    else{ showWin(); }
+    if(t>0.82){ctx.fillStyle='rgba(255,255,255,'+((t-0.82)/0.18)+')';ctx.fillRect(0,0,W,H);}
+    if(t<1&&!reduce)requestAnimationFrame(frame); else showWin();
   }
-  if(reduce){ setTimeout(showWin, 400); } else { requestAnimationFrame(frame); }
+  if(reduce) setTimeout(showWin,400); else requestAnimationFrame(frame);
 }
-
 function showWin(){
   $('#depart').classList.remove('show');
   $('#coreSection').style.display='none';
   document.querySelector('.rail').style.display='none';
   $('#winSection').style.display='block';
-  const left=Math.max(0,window.__timeLeft||0);
-  $('#finalTime').textContent=fmtTime(left);
+  $('#finalTime').textContent=fmtTime(Math.max(0,window.__timeLeft||0));
   window.scrollTo({top:0,behavior:'smooth'});
 }
+$('#restart').onclick=()=>{ location.href='index.html'; };
 </script>
 </body>
 </html>

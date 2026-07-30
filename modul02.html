@@ -3,13 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Modul 02 — Deriva spectrală</title>
+<title>Modul 02 — Observator · OrbiQuest</title>
 <link rel="stylesheet" href="style.css">
+<style>:root{--accent:#7000FF;--accent-2:#b98cff;--accent-deep:#4a00a8;--accent-glow:rgba(112,0,255,.55);--accent-soft:rgba(112,0,255,.10);--hull:rgba(112,0,255,.18);--grid:rgba(112,0,255,.05)}</style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="logo"><b>ARV · KEPLER<i>9</i></b><span>Laborator spectral</span></div>
+    <div class="logo"><b>ORBI<i>QUEST</i></b><span>Observator Astronomic</span></div>
     <div class="status">
       <div class="stat"><span class="k">Oxigen</span><span class="v" id="o2">14:00</span></div>
       <div class="stat"><span class="k">Coduri</span><span class="v" id="codeCount">1 / 3</span></div>
@@ -19,7 +20,7 @@
   <div class="rail" id="rail"></div>
 
   <section class="room enter">
-    <h2>Modul 02 — Deriva spectrală</h2>
+    <h2>Modul 02 — <em>Observatorul Astronomic</em></h2>
     <div class="rlead">Instrument: spectrometru · Fizică: efect Doppler (redshift)</div>
     <p class="story">Spectrometrul a prins lumina unei galaxii îndepărtate. Linia hidrogenului, care
        în laborator stă la <b>656,3 nm</b>, apare deplasată spre roșu. Aliniază cursorul pe linia
@@ -62,6 +63,7 @@
 
 <script src="shared.js"></script>
 <script>
+openAirlockIn();
 const seed=getSeed();
 if(seed===null){ location.href='index.html'; }
 const P=buildParams(seed);
@@ -99,8 +101,8 @@ function drawSpectrum(){
   x2.fillStyle='#070b11';x2.fillRect(wl2x(P.lamObs)-2,y0,4,h);
   x2.fillStyle='#ff6b6b';x2.fillText('linie observată',wl2x(P.lamObs)-30,y0+h+30);
   const cx=wl2x(+w2.value);
-  x2.strokeStyle='#5bc0ff';x2.lineWidth=2;x2.beginPath();x2.moveTo(cx,y0-8);x2.lineTo(cx,y0+h+8);x2.stroke();
-  x2.fillStyle='#5bc0ff';x2.beginPath();x2.moveTo(cx,y0-8);x2.lineTo(cx-5,y0-16);x2.lineTo(cx+5,y0-16);x2.fill();
+  x2.strokeStyle='#b98cff';x2.lineWidth=2;x2.beginPath();x2.moveTo(cx,y0-8);x2.lineTo(cx,y0+h+8);x2.stroke();
+  x2.fillStyle='#b98cff';x2.beginPath();x2.moveTo(cx,y0-8);x2.lineTo(cx-5,y0-16);x2.lineTo(cx+5,y0-16);x2.fill();
   x2.fillStyle='#6b7d8f';x2.font='10px DM Mono';
   [450,550,650,700].forEach(t=>{x2.fillText(t+'nm',wl2x(t)-14,y0+h+52);});
   x2.fillStyle='#4a6a8a';x2.font='11px DM Mono';x2.fillText('SPECTRU · GALAXIA UDF-'+(1000+seed%9000),x0,40);
