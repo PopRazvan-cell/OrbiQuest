@@ -61,7 +61,7 @@
 <script src="shared.js"></script>
 <script>
 openAirlockIn();
-SFX.startAmbient('m3');
+SFX.playFile('modul03-ambient.mp3', 0.5, true);
 const seed=getSeed();
 if(seed===null){ location.href='index.html'; }
 const P=buildParams(seed);

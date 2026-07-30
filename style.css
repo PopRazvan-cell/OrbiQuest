@@ -230,10 +230,10 @@ details .body code{color:var(--accent-2);background:var(--accent-soft);padding:1
 .door.left .stripe{right:0;width:60px;box-shadow:0 0 30px var(--accent-glow)}
 .door.right .stripe{left:0;width:60px;box-shadow:0 0 30px var(--accent-glow)}
 .door .bolt{position:absolute;width:10px;height:10px;border-radius:50%;background:#2a3550;box-shadow:inset 0 0 4px #000}
-#airlock.closing .door.left{animation:doorCloseL .95s cubic-bezier(.6,0,.3,1) forwards}
-#airlock.closing .door.right{animation:doorCloseR .95s cubic-bezier(.6,0,.3,1) forwards}
-#airlock.opening .door.left{animation:doorOpenL .95s cubic-bezier(.6,0,.3,1) forwards}
-#airlock.opening .door.right{animation:doorOpenR .95s cubic-bezier(.6,0,.3,1) forwards}
+#airlock.closing .door.left{animation:doorCloseL 2.064s cubic-bezier(.6,0,.3,1) forwards}
+#airlock.closing .door.right{animation:doorCloseR 2.064s cubic-bezier(.6,0,.3,1) forwards}
+#airlock.opening .door.left{animation:doorOpenL 2.064s cubic-bezier(.6,0,.3,1) forwards}
+#airlock.opening .door.right{animation:doorOpenR 2.064s cubic-bezier(.6,0,.3,1) forwards}
 @keyframes doorCloseL{from{transform:translateX(-102%)}to{transform:translateX(0)}}
 @keyframes doorCloseR{from{transform:translateX(102%)}to{transform:translateX(0)}}
 @keyframes doorOpenL{from{transform:translateX(0)}to{transform:translateX(-102%)}}

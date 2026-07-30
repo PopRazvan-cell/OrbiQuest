@@ -149,14 +149,15 @@ function ensureAirlock(){
   }
   return ov;
 }
+const DOOR_MS=2064; /* durata sunetului door-sound.mp3, ca animația ușilor să se potrivească exact */
 function playTransition(kind,label,sub,destURL){
   const ov=ensureAirlock();
   ov.querySelector(".airlock-label .big").textContent=label||"";
   ov.querySelector(".airlock-label .small").textContent=sub||"";
   ov.classList.add("run","closing");
-  SFX.doorSound();
+  SFX.playFile('door-sound.mp3');
   const reduce=matchMedia("(prefers-reduced-motion:reduce)").matches;
-  const closeMs=reduce?120:950;
+  const closeMs=reduce?120:DOOR_MS;
   setTimeout(()=>{ ov.classList.add("closed"); }, closeMs-260);
   setTimeout(()=>{ location.href=destURL; }, closeMs+180);
 }
@@ -169,8 +170,8 @@ function openAirlockIn(){
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     ov.classList.remove("closed","closing");
     ov.classList.add("opening");
-    SFX.doorSound();
-    setTimeout(()=>{ ov.classList.remove("run","opening"); }, 1000);
+    SFX.playFile('door-sound.mp3');
+    setTimeout(()=>{ ov.classList.remove("run","opening"); }, DOOR_MS+50);
   }));
 }
 
@@ -209,36 +210,9 @@ const SFX=(function(){
     o.start(); o.stop(ctx.currentTime+0.04);
   }
 
-  function noiseBuffer(dur){
-    const buf=ctx.createBuffer(1, ctx.sampleRate*dur, ctx.sampleRate);
-    const d=buf.getChannelData(0);
-    for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
-    return buf;
-  }
-  function doorSound(){
-    if(!ctx) return;
-    const src=ctx.createBufferSource(); src.buffer=noiseBuffer(0.9);
-    const bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.Q.value=0.7;
-    bp.frequency.setValueAtTime(200,ctx.currentTime);
-    bp.frequency.exponentialRampToValueAtTime(1800,ctx.currentTime+0.5);
-    bp.frequency.exponentialRampToValueAtTime(120,ctx.currentTime+0.9);
-    const g=ctx.createGain(); g.gain.setValueAtTime(0.16,ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.9);
-    src.connect(bp); bp.connect(g); g.connect(master);
-    src.start(); src.stop(ctx.currentTime+0.9);
-    const th=ctx.createOscillator(), tg=ctx.createGain();
-    th.type='sine'; th.frequency.value=70;
-    tg.gain.setValueAtTime(0.25,ctx.currentTime+0.02);
-    tg.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.3);
-    th.connect(tg); tg.connect(master);
-    th.start(ctx.currentTime+0.02); th.stop(ctx.currentTime+0.32);
-  }
-
   /* teme ambientale: pad-uri de oscilatoare detunate + LFO pe filtru, unice per modul */
   const THEMES={
     m1:{freqs:[49,98,146.8],type:'sawtooth',lfo:0.08,filter:400},
-    m2:{freqs:[110,164.8,220,277.2],type:'sine',lfo:0.18,filter:1600},
-    m3:{freqs:[65.4,130.8],type:'square',lfo:0.9,filter:300},
     core:{freqs:[73.4,110,146.8],type:'triangle',lfo:1.6,filter:600}
   };
   function startAmbient(name){
@@ -295,7 +269,7 @@ const SFX=(function(){
     return a;
   }
 
-  return {ensure,unlock,setMuted,isMuted,tick,doorSound,startAmbient,stopAmbient,chime,playFile};
+  return {ensure,unlock,setMuted,isMuted,tick,startAmbient,stopAmbient,chime,playFile};
 })();
 
 function mountAudioToggle(){

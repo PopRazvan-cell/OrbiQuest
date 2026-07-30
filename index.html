@@ -77,8 +77,8 @@
     display:flex;align-items:center;justify-content:center;padding:32px}
   #introBoot::before{content:"";position:fixed;inset:0;pointer-events:none;
     background:repeating-linear-gradient(0deg,rgba(0,0,0,.14) 0 2px,transparent 2px 4px);opacity:.5}
-  #introBoot.hide{animation:ibOut .6s ease forwards}
-  @keyframes ibOut{to{opacity:0;visibility:hidden;pointer-events:none}}
+  #introBoot.hide{animation:ibSlideOut .75s cubic-bezier(.6,0,.3,1) forwards}
+  @keyframes ibSlideOut{to{transform:translateX(-100%);visibility:hidden;pointer-events:none}}
   .ib-inner{max-width:640px;width:100%;position:relative}
   .ib-tag{font-family:'Rajdhani',sans-serif;font-size:11px;letter-spacing:.34em;text-transform:uppercase;
     color:var(--accent);margin-bottom:18px;opacity:.85}
@@ -126,7 +126,6 @@
     <div class="chips">
       <span class="chip"><b>3</b> module</span>
       <span class="chip"><b>10:00</b> oxigen</span>
-      <span class="chip"><b>∞</b> coduri unice</span>
     </div>
   </section>
 
@@ -184,14 +183,14 @@
     document.body.style.overflow='';
     const whoosh=SFX.playFile('journal-whoosh.mp3');
     whoosh.addEventListener('ended', ()=>{ SFX.playFile('landing-ambient.mp3', 0.5, true); });
-    setTimeout(()=>box.remove(),650);
+    setTimeout(()=>box.remove(),800);
   }
   skipBtn.onclick=finish;
   if(reduce){ finish(); return; }
   let li=0, ci=0;
   function typeStep(){
     if(done) return;
-    if(li>=lines.length){ setTimeout(finish,900); return; }
+    if(li>=lines.length){ setTimeout(finish,2400); return; }
     const line=lines[li];
     if(ci===0 && li>0) txt.insertBefore(document.createTextNode('\n'),cursor);
     if(ci<line.length){

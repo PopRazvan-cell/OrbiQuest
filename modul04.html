@@ -258,7 +258,8 @@ function showAccessGranted(){
 /* ---- plecarea navei (warp) ---- */
 function launchDeparture(){
   const ov=$('#depart'); ov.classList.add('show');
-  SFX.doorSound();
+  const dep=SFX.playFile('door-sound.mp3');
+  dep.addEventListener('ended', ()=>{ SFX.playFile('launch-sound.mp3'); });
   const cv=$('#departCv'), ctx=cv.getContext('2d');
   function size(){cv.width=innerWidth;cv.height=innerHeight;}
   size();addEventListener('resize',size);
