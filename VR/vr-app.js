@@ -179,6 +179,34 @@ AFRAME.registerComponent('simple-locomotion',{
   const hubEl=document.getElementById('hub');
   let activeConsole=null, activeId=null;
   const AMBIENT_FILE={m2:'modul02-ambient.mp3', m3:'modul03-ambient.mp3'};
+  const TECH_SHEETS={
+    m1:'Orbită circulară: forța gravitațională = forța centripetă:  GMm/r² = mv²/r  ⟹  v = √(GM/r). '
+      +'GM = 1.843×10¹⁵ m³/s² (planeta Elara). Raza în metri (1 Mm = 10⁶ m); calculează v în m/s, apoi '
+      +'împarte la 1000 pentru km/s. Setează raza la valoarea țintă, apoi reglează viteza până orbita devine circulară.',
+    m2:'Redshift:  z = (λ_obs − λ_lab) / λ_lab.   Viteza galaxiei:  v = z · c,  cu c = 300 000 km/s. '
+      +'Ex: λ_obs = 670 nm ⟹ z = 13,7/656,3 = 0,0209 ⟹ v ≈ 6 260 km/s.',
+    m3:'Unghiul de paralaxă p e JUMĂTATE din deplasarea totală:  p = deplasare / 2 (″).   '
+      +'Distanța:  d [parseci] = 1 / p[″]. Ex: deplasare 0,050″ ⟹ p = 0,025″ ⟹ d = 40 pc.'
+  };
+  function addTechSheet(parent,text){
+    const sheet=VRUI.panel({width:1.0,height:0.85,pxW:700,pxH:600,parent,position:'0 0.2 0.06',clickable:false});
+    sheet.el.setAttribute('visible','false');
+    sheet.redraw((ctx,w,h)=>{
+      VRUI.drawPanelBg(ctx,w,h,'#7cf7ff',0.95);
+      ctx.textAlign='left'; ctx.fillStyle='#7cf7ff'; ctx.font='700 '+Math.round(h*0.06)+'px '+VRUI.FONT;
+      ctx.fillText('FIȘĂ TEHNICĂ', w*0.07, h*0.1);
+      ctx.fillStyle='#eaf6ff'; ctx.font='400 '+Math.round(h*0.05)+'px '+VRUI.FONT;
+      VRUI.wrapText(ctx,text,w*0.07,h*0.22,w*0.86,h*0.075);
+    });
+    let shown=false;
+    const btn=VRUI.button({parent,width:0.42,height:0.12,label:'📖 Fișă tehnică',accent:'#7cf7ff',
+      position:'0.58 0.95 0',
+      onClick:()=>{
+        shown=!shown;
+        sheet.el.setAttribute('visible', shown);
+        btn.setLabel(shown?'✕ Închide fișa':'📖 Fișă tehnică');
+      }});
+  }
   /* setăm și "visible" (randare) și "scale" la 0 (nu doar vizual — geometria
      de dimensiune ~0 nu mai poate fi lovită de raycaster, deci panourile din
      hub chiar nu mai sunt "apăsabile" cât timp ești într-o consolă) */
@@ -207,6 +235,7 @@ AFRAME.registerComponent('simple-locomotion',{
     consolesRoot.appendChild(activeConsole);
     VRUI.button({parent:activeConsole,width:0.4,height:0.12,label:'◀ HUB',accent:'#8a95b0',
                  position:'0 0.95 0', onClick:closeConsole});
+    if(TECH_SHEETS[id]) addTechSheet(activeConsole, TECH_SHEETS[id]);
     if(id==='journal') journal.open(activeConsole);
     else if(id==='m1') mod1.open(activeConsole);
     else if(id==='m2') mod2.open(activeConsole);
@@ -412,7 +441,16 @@ AFRAME.registerComponent('simple-locomotion',{
       let cursor=656.3;
       const specW=1024, specWmin=640, specWmax=Math.max(720, Math.ceil(P.lamObs+20));
       const spec=VRUI.panel({width:1.0,height:0.28,pxW:specW,pxH:180,parent,position:'0 0.55 0'});
+      const metrics=VRUI.panel({width:0.9,height:0.1,pxW:640,parent,position:'0 0.35 0'});
       const status=VRUI.panel({width:0.9,height:0.16,pxW:640,parent,position:'0 0.2 0'});
+      function renderMetrics(){
+        metrics.redraw((ctx,w,h)=>{
+          VRUI.drawPanelBg(ctx,w,h,'#7000FF',0.75);
+          ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#eaf6ff';
+          ctx.font='700 '+Math.round(h*0.36)+'px '+VRUI.FONT;
+          ctx.fillText('λ laborator: 656.3 nm   ·   Cursor: '+cursor.toFixed(1)+' nm', w/2, h/2);
+        });
+      }
       function wl2x(wl,w){ return (wl-specWmin)/(specWmax-specWmin)*w; }
       function drawSpec(){
         spec.redraw((ctx,w,h)=>{
@@ -423,6 +461,8 @@ AFRAME.registerComponent('simple-locomotion',{
           ctx.beginPath(); ctx.moveTo(wl2x(656.3,w),8); ctx.lineTo(wl2x(656.3,w),h-30); ctx.stroke();
           ctx.fillStyle='#dfe9ff'; ctx.font='700 15px '+VRUI.FONT; ctx.textAlign='center';
           ctx.fillText('laborator 656.3',wl2x(656.3,w),h-8);
+          ctx.strokeStyle='#ff6b6b'; ctx.lineWidth=3;
+          ctx.beginPath(); ctx.moveTo(wl2x(P.lamObs,w),8); ctx.lineTo(wl2x(P.lamObs,w),h-30); ctx.stroke();
           ctx.fillStyle='#ff6b6b';
           ctx.fillText('linie observată',wl2x(P.lamObs,w),h-8);
           ctx.strokeStyle='#b98cff'; ctx.lineWidth=4;
@@ -438,9 +478,10 @@ AFRAME.registerComponent('simple-locomotion',{
         });
       }
       drawSpec();
+      renderMetrics();
       setStatus('Aliniază cursorul pe linia observată, apoi introdu viteza (km/s).','#7000FF');
 
-      function moveCursor(d){ return ()=>{ cursor=Math.min(specWmax,Math.max(specWmin,cursor+d)); drawSpec(); }; }
+      function moveCursor(d){ return ()=>{ cursor=Math.min(specWmax,Math.max(specWmin,cursor+d)); drawSpec(); renderMetrics(); }; }
       VRUI.button({parent,width:0.15,height:0.1,label:'≪5',accent:'#4a00a8',position:'-0.6 -0.02 0',onClick:moveCursor(-5)});
       VRUI.button({parent,width:0.15,height:0.1,label:'≪1',accent:'#4a00a8',position:'-0.4 -0.02 0',onClick:moveCursor(-1)});
       VRUI.button({parent,width:0.15,height:0.1,label:'1≫',accent:'#4a00a8',position:'0.4 -0.02 0',onClick:moveCursor(1)});
