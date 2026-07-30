@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OrbiQuest VR</title>
+<style>
+  html,body{margin:0;height:100%;background:#02050a;overflow:hidden;
+    font-family:'Segoe UI',Arial,sans-serif}
+  #loadingMsg{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    color:#7cf7ff;font-size:15px;letter-spacing:.08em;z-index:9999;background:#02050a}
+  a-scene{height:100%}
+</style>
+</head>
+<body>
+
+<div id="loadingMsg">Se încarcă OrbiQuest VR&hellip;</div>
+
+<script src="aframe.min.js"></script>
+<script src="vr-audio.js"></script>
+<script src="vr-ui.js"></script>
+<script src="vr-puzzles.js"></script>
+
+<a-scene background="color:#02050a" vr-mode-ui="enabled: true" loading-screen="enabled: false">
+
+  <a-assets></a-assets>
+
+  <a-entity id="rig" position="0 0 0">
+    <a-entity id="camera" camera="near:0.05" position="0 1.6 0" look-controls="pointerLockEnabled:false"></a-entity>
+    <a-entity id="handL" laser-controls="hand:left"
+              raycaster="objects:.clickable; far:6; interval:20" line="color:#00F0FF; opacity:0.55"></a-entity>
+    <a-entity id="handR" laser-controls="hand:right"
+              raycaster="objects:.clickable; far:6; interval:20" line="color:#00F0FF; opacity:0.55"></a-entity>
+  </a-entity>
+
+  <a-entity cursor="rayOrigin:mouse" raycaster="objects:.clickable; far:8"></a-entity>
+
+  <a-entity id="lights">
+    <a-entity light="type:ambient; color:#22364a; intensity:0.8"></a-entity>
+    <a-entity light="type:point; color:#7cf7ff; intensity:0.7; distance:12" position="0 3 0"></a-entity>
+    <a-entity light="type:directional; color:#ffffff; intensity:0.35" position="2 4 2"></a-entity>
+  </a-entity>
+
+  <a-entity id="floor" geometry="primitive:cylinder; radius:4.2; height:0.06; segmentsRadial:48"
+            material="color:#0b0e18; metalness:0.6; roughness:0.4" position="0 -0.03 0"></a-entity>
+  <a-entity id="floorRing" geometry="primitive:ring; radiusInner:2.4; radiusOuter:2.46; segmentsTheta:64"
+            material="color:#00F0FF; shader:flat; opacity:0.5; side:double" rotation="-90 0 0" position="0 0.001 0"></a-entity>
+
+  <a-entity id="sky"></a-entity>
+
+  <a-entity id="hub"></a-entity>
+  <a-entity id="hud"></a-entity>
+  <a-entity id="consoles"></a-entity>
+  <a-entity id="fx"></a-entity>
+
+</a-scene>
+
+<script src="vr-app.js"></script>
+</body>
+</html>
