@@ -154,6 +154,8 @@ canvas{display:block;width:100%;height:auto;position:relative;z-index:1}
 .dial{margin-bottom:18px}
 .dial label{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-dim);letter-spacing:.04em;margin-bottom:8px;font-family:'Rajdhani',sans-serif}
 .dial label b{color:var(--accent-2);font-size:15px}
+.dial .hint{font-size:11px;color:var(--ink-dim);letter-spacing:.04em;margin-top:8px;font-family:'Rajdhani',sans-serif}
+.dial .hint b{color:var(--accent-2)}
 input[type=range]{-webkit-appearance:none;width:100%;height:5px;background:linear-gradient(90deg,var(--accent-deep),var(--accent));outline:none}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;background:var(--accent);border:3px solid #03060e;cursor:pointer;box-shadow:0 0 16px var(--accent-glow);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
 input[type=range]::-moz-range-thumb{width:20px;height:20px;background:var(--accent);border:3px solid #03060e;cursor:pointer;box-shadow:0 0 16px var(--accent-glow)}
@@ -241,6 +243,13 @@ details .body code{color:var(--accent-2);background:var(--accent-soft);padding:1
 #airlock.closed .airlock-label{opacity:1}
 .airlock-label .big{font-size:24px;letter-spacing:.2em;color:var(--accent-2);text-shadow:0 0 26px var(--accent-glow)}
 .airlock-label .small{font-size:11px;letter-spacing:.34em;color:var(--ink-dim);margin-top:10px}
+
+/* ---------- TOGGLE AUDIO (fixat, pe toate paginile) ---------- */
+.audio-toggle{position:fixed;top:16px;right:16px;z-index:10800;width:38px;height:38px;
+  border:1px solid var(--hull);background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  color:var(--ink);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);transition:.2s}
+.audio-toggle:hover{border-color:var(--accent);box-shadow:0 0 16px var(--accent-soft)}
 
 .enter{animation:enterRoom .8s ease both}
 @keyframes enterRoom{from{opacity:0;transform:translateY(20px) scale(.99)}to{opacity:1;transform:none}}

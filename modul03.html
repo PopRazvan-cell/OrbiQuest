@@ -12,8 +12,8 @@
   <header>
     <div class="logo"><b>ORBI<i>QUEST</i></b><span>Reactor Cuantic</span></div>
     <div class="status">
-      <div class="stat"><span class="k">Oxigen</span><span class="v" id="o2">14:00</span></div>
-      <div class="stat"><span class="k">Coduri</span><span class="v" id="codeCount">2 / 3</span></div>
+      <div class="stat"><span class="k">Oxigen</span><span class="v" id="o2">10:00</span></div>
+      <div class="stat"><span class="k">Cod</span><span class="v" id="codeCount">_ · _ · _</span></div>
     </div>
   </header>
 
@@ -61,6 +61,7 @@
 <script src="shared.js"></script>
 <script>
 openAirlockIn();
+SFX.startAmbient('m3');
 const seed=getSeed();
 if(seed===null){ location.href='index.html'; }
 const P=buildParams(seed);
@@ -68,7 +69,7 @@ const codes=getCodes();
 
 startOxygen(document.getElementById('o2'), ()=>{ location.href=nextURL('gameover.html'); });
 renderRail(document.getElementById('rail'), 2);
-document.getElementById('codeCount').textContent=((codes.c1?1:0)+(codes.c2?1:0))+' / 3';
+renderCodeDisplay(document.getElementById('codeCount'), codes);
 
 const cv3=$('#cv3'), x3=cv3.getContext('2d');
 let epochJan=true;
@@ -111,6 +112,8 @@ $('#check3').onclick=()=>{
   const tol=Math.max(P.d3correct*0.02,0.6);
   if(Math.abs(d-P.d3correct)<=tol){
     $('#frag3').textContent=P.dig3; $('#code3').classList.add('show');
+    renderCodeDisplay(document.getElementById('codeCount'), {c1:codes.c1, c2:codes.c2, c3:P.dig3});
+    SFX.chime(true);
     $('#fb3').className='feedback ok';
     $('#fb3').textContent='Distanță confirmată: '+P.d3correct.toFixed(1)+' pc. Spre nucleul navei...';
     setTimeout(()=>{

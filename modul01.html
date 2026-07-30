@@ -11,8 +11,8 @@
   <header>
     <div class="logo"><b>ORBI<i>QUEST</i></b><span>Laborator Astrofizică</span></div>
     <div class="status">
-      <div class="stat"><span class="k">Oxigen</span><span class="v" id="o2">14:00</span></div>
-      <div class="stat"><span class="k">Coduri</span><span class="v" id="codeCount">0 / 3</span></div>
+      <div class="stat"><span class="k">Oxigen</span><span class="v" id="o2">10:00</span></div>
+      <div class="stat"><span class="k">Cod</span><span class="v" id="codeCount">_ · _ · _</span></div>
     </div>
   </header>
 
@@ -21,9 +21,10 @@
   <section class="room enter">
     <h2>Modul 01 — <em>Laboratorul de Astrofizică</em></h2>
     <div class="rlead">Instrument: propulsor de manevră · Fizică: mecanică orbitală</div>
-    <p class="story">Sonda de recunoaștere plutește în derivă spre planeta pitică Elara. Pune-o pe o
-       <b>orbită circulară stabilă</b> reglând viteza de injecție. Prea mică → se prăbușește;
-       prea mare → scapă. Există o singură viteză corectă pentru raza aleasă.</p>
+    <p class="story">Sonda de recunoaștere plutește în derivă spre planeta pitică Elara. Datele misiunii
+       indică o rază de orbitare țintă — reglează atât raza, cât și viteza de injecție pentru a obține o
+       <b>orbită circulară stabilă</b>. Prea mică → se prăbușește; prea mare → scapă; rază greșită →
+       nu se extrage codul.</p>
 
     <div class="grid2">
       <div class="stage"><canvas id="cv1" width="560" height="420"></canvas></div>
@@ -32,6 +33,7 @@
         <div class="dial">
           <label>Raza orbitei <b><span id="r1v">—</span> Mm</b></label>
           <input type="range" id="r1" min="125" max="255" value="125" step="5">
+          <div class="hint">Rază țintă (date navă): <b id="r1target">—</b> Mm</div>
         </div>
         <div class="dial">
           <label>Viteză injecție <b><span id="v1v">1.50</span> km/s</b></label>
@@ -55,7 +57,8 @@
             <code>GMm/r² = mv²/r</code> ⟹ <code>v = √(GM/r)</code><br><br>
             Aici <code>GM = 1.843×10¹⁵ m³/s²</code> (planeta Elara).
             Raza în metri (1 Mm = 10⁶ m), calculează v în m/s, împarte la 1000 pentru km/s.
-            Reglează sliderul până orbita e stabilă.
+            Setează întâi raza la valoarea țintă afișată de consolă, apoi reglează viteza
+            până orbita devine circulară.
           </div>
         </details>
       </div>
@@ -67,21 +70,25 @@
 <script>
 /* --- parametri din seed --- */
 openAirlockIn();
+SFX.startAmbient('m1');
 const seed=getSeed();
 if(seed===null){ location.href='index.html'; }
 const P=buildParams(seed);
 
 startOxygen(document.getElementById('o2'), ()=>{ location.href=nextURL('gameover.html'); });
 renderRail(document.getElementById('rail'), 0);
-document.getElementById('codeCount').textContent=(getCodes().c1?1:0)+' / 3';
+const codes=getCodes();
+renderCodeDisplay(document.getElementById('codeCount'), codes);
 
 /* --- setare rază țintă din seed; slider pornește departe de soluție --- */
 const GMpx_CONST=P.GMpx, PXPERMM=P.PXPERMM, CX=280, CY=210;
 const vNeeded=P.vNeeded;
 const r1El=$('#r1'), v1El=$('#v1');
-// rază fixă per joc (determinată de seed); viteza e ce trebuie calculat
-r1El.value=P.r1; r1El.min=P.r1; r1El.max=P.r1;
-$('#r1v').textContent=P.r1;
+// raza e reglabilă liber de jucător; doar raza-țintă (din seed) deblochează codul
+r1El.min=125; r1El.max=255; r1El.step=5;
+r1El.value = (P.r1<190) ? 255 : 125;   // pornește departe de țintă
+$('#r1v').textContent=r1El.value;
+$('#r1target').textContent=P.r1;
 v1El.value=1.50; $('#v1v').textContent='1.50';
 
 const cv1=$('#cv1'), x1=cv1.getContext('2d');
@@ -111,9 +118,10 @@ const KMS_PER_PXV = 3.20/Math.sqrt(GMpx_CONST/(180*PXPERMM));
 let raf1=null, physId=null;
 function launch1(){
   cancelAnimationFrame(raf1); if(physId)clearInterval(physId);
-  const r_px=P.r1*PXPERMM;
+  const rChosen=+r1El.value;
+  const r_px=rChosen*PXPERMM;
   const v_px=(+v1El.value)/KMS_PER_PXV;   // km/s -> px/timp, aceeași scalare ca vNeeded
-  sim1={x:CX+r_px,y:CY,vx:0,vy:-v_px,trail:[],alive:true,captured:false,frames:0};
+  sim1={x:CX+r_px,y:CY,vx:0,vy:-v_px,trail:[],alive:true,captured:false,onTarget:false,frames:0};
   let minR=1e9,maxR=0; const DT=0.7;
   let done=false;
   // FIZICA: avansează pe timp real (setInterval), independent de fps-ul randării.
@@ -145,16 +153,24 @@ function launch1(){
     }
     if(sim1.frames>75){
       done=true;clearInterval(physId);
-      sim1.captured=ecc<0.055;
-      if(sim1.captured){
+      const stable=ecc<0.055;
+      const onTarget=rChosen===P.r1;
+      sim1.captured=stable&&onTarget;
+      sim1.onTarget=onTarget;
+      if(stable&&onTarget){
         $('#fb1').className='feedback ok';
         $('#vneed').textContent='STABILĂ';$('#vneed').style.color='var(--ok)';
-        $('#fb1').textContent='Orbită circulară stabilă. Blochează pentru a extrage codul.';
+        $('#fb1').textContent='Orbită circulară stabilă, pe raza-țintă. Blochează pentru a extrage codul.';
         $('#check1').disabled=false;
+      }else if(stable&&!onTarget){
+        $('#fb1').className='feedback err';$('#vneed').style.color='var(--err)';
+        $('#vneed').textContent='RAZĂ GREȘITĂ';
+        $('#fb1').textContent='Orbită circulară, dar la altă rază decât cea din datele misiunii ('+P.r1+' Mm). Ajustează raza.';
+        $('#check1').disabled=true;
       }else{
         $('#fb1').className='feedback err';$('#vneed').style.color='var(--err)';
-        $('#vneed').textContent=(maxR>P.r1*PXPERMM+4)?'PREA MARE':'PREA MICĂ';
-        $('#fb1').textContent='Orbită eliptică (ecc='+ecc.toFixed(3)+'). Recalculează v = √(GM/r).';
+        $('#vneed').textContent=(maxR>r_px+4)?'PREA MARE':'PREA MICĂ';
+        $('#fb1').textContent='Orbită eliptică (ecc='+ecc.toFixed(3)+'). Recalculează v = √(GM/r) pentru raza aleasă.';
         $('#check1').disabled=true;
       }
       return;
@@ -166,11 +182,14 @@ function launch1(){
   render();
 }
 
+r1El.oninput=e=>{$('#r1v').textContent=e.target.value;$('#vneed').textContent='—';$('#vneed').style.color='';$('#check1').disabled=true;};
 v1El.oninput=e=>{$('#v1v').textContent=(+e.target.value).toFixed(2);$('#vneed').textContent='—';$('#vneed').style.color='';$('#check1').disabled=true;};
 $('#launch1').onclick=launch1;
 $('#check1').onclick=()=>{
   if(sim1&&sim1.captured){
     $('#frag1').textContent=P.dig1; $('#code1').classList.add('show');
+    renderCodeDisplay(document.getElementById('codeCount'), {c1:P.dig1});
+    SFX.chime(true);
     $('#fb1').className='feedback ok'; $('#fb1').textContent='Cod extras. Trecere spre Modul 02...';
     setTimeout(()=>{
       playTransition('corridor','Traversare coridor','Modul 02 · Laborator spectral',

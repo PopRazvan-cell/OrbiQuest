@@ -80,7 +80,8 @@
   <header>
     <div class="logo"><b>ORBI<i>QUEST</i></b><span>Terminal de evadare</span></div>
     <div class="status">
-      <div class="stat"><span class="k">Oxigen</span><span class="v" id="o2">14:00</span></div>
+      <div class="stat"><span class="k">Oxigen</span><span class="v" id="o2">10:00</span></div>
+      <div class="stat"><span class="k">Cod</span><span class="v" id="codeCount">_ · _ · _</span></div>
       <div class="stat"><span class="k">Sisteme</span><span class="v crit" id="sysStat">BLOCAT</span></div>
     </div>
   </header>
@@ -153,6 +154,7 @@
 <script src="shared.js"></script>
 <script>
 openAirlockIn();
+SFX.startAmbient('core');
 const seed=getSeed();
 if(seed===null){ location.href='index.html'; }
 const P=buildParams(seed);
@@ -160,6 +162,7 @@ const codes=getCodes();
 
 let timerId=startOxygen(document.getElementById('o2'), ()=>{ location.href=nextURL('gameover.html'); });
 renderRail(document.getElementById('rail'), 3);
+renderCodeDisplay(document.getElementById('codeCount'), codes);
 
 /* codul real din cifrele obținute; capetele LED afișează etichete */
 const realCode=''+(codes.c1||'')+(codes.c2||'')+(codes.c3||'');
@@ -203,6 +206,7 @@ function submit(){
     showAccessGranted();
   }else{
     $('#fbFinal').className='feedback err center';$('#fbFinal').textContent='ACCES REFUZAT · cod incorect.';
+    SFX.chime(false);
     // shake LED
     entered=''; renderLED();
   }
@@ -229,6 +233,7 @@ let coreRAF=requestAnimationFrame(drawCore);
 /* ---- ACCES GARANTAT: confetti/particule, apoi plecare ---- */
 function showAccessGranted(){
   cancelAnimationFrame(coreRAF);
+  SFX.stopAmbient(); SFX.chime(true);
   const ag=$('#accessGranted'); ag.classList.add('show');
   const cv=$('#agCanvas'), ctx=cv.getContext('2d');
   function size(){cv.width=innerWidth;cv.height=innerHeight;}
@@ -253,6 +258,7 @@ function showAccessGranted(){
 /* ---- plecarea navei (warp) ---- */
 function launchDeparture(){
   const ov=$('#depart'); ov.classList.add('show');
+  SFX.doorSound();
   const cv=$('#departCv'), ctx=cv.getContext('2d');
   function size(){cv.width=innerWidth;cv.height=innerHeight;}
   size();addEventListener('resize',size);

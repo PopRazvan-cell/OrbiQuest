@@ -71,9 +71,40 @@
   .card.c1{border-color:rgba(0,240,255,.25)} .card.c1 .tag{color:#7cf7ff}
   .card.c2{border-color:rgba(112,0,255,.3)} .card.c2 .tag{color:#b98cff}
   .card.c3{border-color:rgba(255,51,102,.3)} .card.c3 .tag{color:#ff7d9c}
+
+  /* BOOT INTRO: jurnal de bord typewriter, rulează înaintea landing page-ului */
+  #introBoot{position:fixed;inset:0;z-index:10500;background:#02050a;
+    display:flex;align-items:center;justify-content:center;padding:32px}
+  #introBoot::before{content:"";position:fixed;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(0deg,rgba(0,0,0,.14) 0 2px,transparent 2px 4px);opacity:.5}
+  #introBoot.hide{animation:ibOut .6s ease forwards}
+  @keyframes ibOut{to{opacity:0;visibility:hidden;pointer-events:none}}
+  .ib-inner{max-width:640px;width:100%;position:relative}
+  .ib-tag{font-family:'Rajdhani',sans-serif;font-size:11px;letter-spacing:.34em;text-transform:uppercase;
+    color:var(--accent);margin-bottom:18px;opacity:.85}
+  #ibText{font-family:'DM Mono','Consolas','Courier New',monospace;font-size:clamp(13px,2.4vw,16px);
+    line-height:1.9;color:#8fe9ff;white-space:pre-wrap;min-height:220px;
+    text-shadow:0 0 10px rgba(0,240,255,.25)}
+  #ibText .ln-ok{color:#5fd9a0}
+  .ib-cursor{display:inline-block;width:8px;height:1em;background:#8fe9ff;vertical-align:text-bottom;
+    margin-left:2px;box-shadow:0 0 8px rgba(0,240,255,.6);animation:ibBlink .9s step-end infinite}
+  @keyframes ibBlink{50%{opacity:0}}
+  .ib-skip{position:absolute;right:0;bottom:-52px;background:transparent;border:1px solid var(--hull);
+    color:var(--ink-dim);font-family:'Rajdhani',sans-serif;font-size:11px;letter-spacing:.18em;
+    text-transform:uppercase;padding:9px 16px;cursor:pointer;transition:.2s}
+  .ib-skip:hover{color:var(--accent-2);border-color:var(--accent-deep);background:var(--accent-soft)}
 </style>
 </head>
 <body>
+
+<!-- BOOT INTRO: povestea, afișată typewriter înaintea landing page-ului -->
+<div id="introBoot">
+  <div class="ib-inner">
+    <div class="ib-tag">◦ Recuperare jurnal de bord ◦</div>
+    <pre id="ibText"><span class="ib-cursor"></span></pre>
+    <button class="ib-skip" id="ibSkip">Sari peste ▶</button>
+  </div>
+</div>
 
 <!-- COCKPIT OVERLAY (parbriz navă) -->
 <div class="cockpit">
@@ -94,10 +125,25 @@
     </div>
     <div class="chips">
       <span class="chip"><b>3</b> module</span>
-      <span class="chip"><b>14:00</b> oxigen</span>
-      <span class="chip"><b>100%</b> offline</span>
+      <span class="chip"><b>10:00</b> oxigen</span>
       <span class="chip"><b>∞</b> coduri unice</span>
     </div>
+  </section>
+
+  <section class="room enter" id="story">
+    <h2>Jurnal de bord — <em>ultima transmisie</em></h2>
+    <div class="rlead">Log misiune · Naveta ARV Kepler-9 · Ziua 214</div>
+    <p class="story">214 zile de la lansare. Naveta de cercetare <b>ARV Kepler-9</b> traversa marginea sistemului
+      solar, la 41 de unități astronomice de Soare, când senzorii au înregistrat o anomalie gravitațională
+      neînregistrată în nicio hartă stelară. O fracțiune de secundă mai târziu, un impuls a lovit nava —
+      sistemele s-au blocat, culoarele s-au întunecat, iar inteligența artificială de bord a intrat în avarie.</p>
+    <p class="story">Ai fost singurul membru al echipajului readus la conștiență de sistemul de urgență.
+      Rezervă de oxigen: <b>10 minute</b>. Suficient cât să repari, pe rând, cele trei module vitale ale
+      navei — Laboratorul de Astrofizică, Observatorul spectral și Reactorul cuantic — și să introduci
+      codul de repornire înainte ca aerul să se termine.</p>
+    <p class="story">Fiecare modul e blocat cu o cifră derivată dintr-o lege reală a fizicii. Rezolvă
+      ecuațiile, recalibrează instrumentele, recuperează fragmentele codului. Nava — și tu — nu aveți
+      a doua șansă.</p>
   </section>
 
   <section id="module">
@@ -115,6 +161,52 @@
 
 <script src="shared.js"></script>
 <script>
+/* BOOT INTRO: jurnal de bord scris typewriter, apoi dezvăluie landing page-ul */
+(function(){
+  const lines=[
+    '> SISTEM DE URGENȚĂ — REPORNIRE...',
+    '> Recuperare jurnal de bord... OK',
+    '> Ziua 214 · 41 UA de Soare',
+    '> Echipaj: 1 supraviețuitor detectat',
+    '> Rezervă oxigen: 10:00',
+    '> Se încarcă interfața de navigație OrbiQuest_'
+  ];
+  const box=document.getElementById('introBoot');
+  const txt=document.getElementById('ibText');
+  const cursor=txt.querySelector('.ib-cursor');
+  const skipBtn=document.getElementById('ibSkip');
+  const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
+  document.body.style.overflow='hidden';
+  let done=false;
+  function finish(){
+    if(done) return; done=true;
+    box.classList.add('hide');
+    document.body.style.overflow='';
+    const whoosh=SFX.playFile('journal-whoosh.mp3');
+    whoosh.addEventListener('ended', ()=>{ SFX.playFile('landing-ambient.mp3', 0.5, true); });
+    setTimeout(()=>box.remove(),650);
+  }
+  skipBtn.onclick=finish;
+  if(reduce){ finish(); return; }
+  let li=0, ci=0;
+  function typeStep(){
+    if(done) return;
+    if(li>=lines.length){ setTimeout(finish,900); return; }
+    const line=lines[li];
+    if(ci===0 && li>0) txt.insertBefore(document.createTextNode('\n'),cursor);
+    if(ci<line.length){
+      txt.insertBefore(document.createTextNode(line[ci]),cursor);
+      SFX.tick();
+      ci++;
+      setTimeout(typeStep, 16+Math.random()*26);
+    }else{
+      li++; ci=0;
+      setTimeout(typeStep, 260);
+    }
+  }
+  setTimeout(typeStep, 350);
+})();
+
 /* HERO ART: rețea de noduri + cub blockchain-like, în cyan */
 const cv=document.getElementById('heroArt'), g=cv.getContext('2d');
 function resize(){cv.width=cv.offsetWidth;cv.height=cv.offsetHeight;}
@@ -153,7 +245,7 @@ requestAnimationFrame(draw);
 document.getElementById('startBtn').onclick=()=>{
   const seed=(Date.now()^Math.floor(Math.random()*1e9))>>>0;
   playTransition('airlock','Deschidere sas','Modul 01 · Laborator Astrofizică',
-    'modul01.html?seed='+seed+'&t='+(14*60));
+    'modul01.html?seed='+seed+'&t='+(10*60));
 };
 </script>
 </body>

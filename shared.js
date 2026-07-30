@@ -31,7 +31,7 @@ function getCodes(){
 }
 function getTimeLeft(){
   const t = qs().get('t');
-  return t!==null ? parseInt(t,10) : 14*60;   // default 14 min
+  return t!==null ? parseInt(t,10) : 10*60;   // default 10 min
 }
 
 /* construiește URL-ul următoarei pagini păstrând starea */
@@ -101,6 +101,19 @@ function startOxygen(displayEl, onZero){
 }
 
 /* ============================================================
+   COD MEMORAT — afișează cifrele obținute (persistă vizual pe
+   toate paginile, ca jucătorul să nu trebuiască să le rețină singur)
+   ============================================================ */
+function renderCodeDisplay(el, codes){
+  if(!el) return;
+  const d=[codes.c1, codes.c2, codes.c3];
+  el.innerHTML = d.map(x=> x
+    ? `<span style="color:var(--ok)">${x}</span>`
+    : `<span style="color:var(--ink-dim)">_</span>`
+  ).join('<span style="color:var(--ink-dim)"> · </span>');
+}
+
+/* ============================================================
    RAIL DE PROGRES — marchează camerele rezolvate
    step: indexul camerei curente (0..3). c: obiectul codurilor.
    ============================================================ */
@@ -141,6 +154,7 @@ function playTransition(kind,label,sub,destURL){
   ov.querySelector(".airlock-label .big").textContent=label||"";
   ov.querySelector(".airlock-label .small").textContent=sub||"";
   ov.classList.add("run","closing");
+  SFX.doorSound();
   const reduce=matchMedia("(prefers-reduced-motion:reduce)").matches;
   const closeMs=reduce?120:950;
   setTimeout(()=>{ ov.classList.add("closed"); }, closeMs-260);
@@ -155,9 +169,148 @@ function openAirlockIn(){
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     ov.classList.remove("closed","closing");
     ov.classList.add("opening");
+    SFX.doorSound();
     setTimeout(()=>{ ov.classList.remove("run","opening"); }, 1000);
   }));
 }
+
+/* ============================================================
+   AUDIO — motor sintetizat prin Web Audio API (tastare, uși, teme
+   ambientale per modul, reușită/eșec) + redare de fișiere audio
+   locale (playFile), totul offline — fără cereri de rețea.
+   ============================================================ */
+const SFX=(function(){
+  let ctx=null, master=null, ambient=null, filePlayers=[];
+  let muted=localStorage.getItem('oq_muted')==='1';
+
+  function ensure(){
+    if(ctx) return ctx;
+    ctx=new (window.AudioContext||window.webkitAudioContext)();
+    master=ctx.createGain(); master.gain.value=muted?0:1; master.connect(ctx.destination);
+    return ctx;
+  }
+  function unlock(){ ensure(); if(ctx.state==='suspended') ctx.resume(); }
+  ['pointerdown','keydown'].forEach(ev=>addEventListener(ev,unlock,{once:true}));
+
+  function setMuted(m){
+    muted=m; localStorage.setItem('oq_muted', m?'1':'0');
+    if(master) master.gain.setTargetAtTime(m?0:1, ctx.currentTime, 0.05);
+    filePlayers.forEach(a=>{ a.muted=m; });
+  }
+  function isMuted(){ return muted; }
+
+  function tick(){
+    if(!ctx) return;
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type='square'; o.frequency.value=1400+Math.random()*500;
+    g.gain.value=0.025;
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.035);
+    o.connect(g); g.connect(master);
+    o.start(); o.stop(ctx.currentTime+0.04);
+  }
+
+  function noiseBuffer(dur){
+    const buf=ctx.createBuffer(1, ctx.sampleRate*dur, ctx.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+    return buf;
+  }
+  function doorSound(){
+    if(!ctx) return;
+    const src=ctx.createBufferSource(); src.buffer=noiseBuffer(0.9);
+    const bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.Q.value=0.7;
+    bp.frequency.setValueAtTime(200,ctx.currentTime);
+    bp.frequency.exponentialRampToValueAtTime(1800,ctx.currentTime+0.5);
+    bp.frequency.exponentialRampToValueAtTime(120,ctx.currentTime+0.9);
+    const g=ctx.createGain(); g.gain.setValueAtTime(0.16,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.9);
+    src.connect(bp); bp.connect(g); g.connect(master);
+    src.start(); src.stop(ctx.currentTime+0.9);
+    const th=ctx.createOscillator(), tg=ctx.createGain();
+    th.type='sine'; th.frequency.value=70;
+    tg.gain.setValueAtTime(0.25,ctx.currentTime+0.02);
+    tg.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.3);
+    th.connect(tg); tg.connect(master);
+    th.start(ctx.currentTime+0.02); th.stop(ctx.currentTime+0.32);
+  }
+
+  /* teme ambientale: pad-uri de oscilatoare detunate + LFO pe filtru, unice per modul */
+  const THEMES={
+    m1:{freqs:[49,98,146.8],type:'sawtooth',lfo:0.08,filter:400},
+    m2:{freqs:[110,164.8,220,277.2],type:'sine',lfo:0.18,filter:1600},
+    m3:{freqs:[65.4,130.8],type:'square',lfo:0.9,filter:300},
+    core:{freqs:[73.4,110,146.8],type:'triangle',lfo:1.6,filter:600}
+  };
+  function startAmbient(name){
+    ensure(); stopAmbient();
+    const t=THEMES[name]; if(!t) return;
+    const nodes=[];
+    const filt=ctx.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=t.filter;
+    const bus=ctx.createGain(); bus.gain.value=0.0001;
+    filt.connect(bus); bus.connect(master);
+    bus.gain.setTargetAtTime(0.09, ctx.currentTime, 1.2);
+    t.freqs.forEach(f=>{
+      const o=ctx.createOscillator(); o.type=t.type; o.frequency.value=f;
+      const og=ctx.createGain(); og.gain.value=1/t.freqs.length;
+      o.connect(og); og.connect(filt); o.start();
+      nodes.push(o);
+    });
+    const lfo=ctx.createOscillator(); lfo.frequency.value=t.lfo;
+    const lfoGain=ctx.createGain(); lfoGain.gain.value=t.filter*0.5;
+    lfo.connect(lfoGain); lfoGain.connect(filt.frequency); lfo.start();
+    nodes.push(lfo);
+    ambient={nodes,bus};
+  }
+  function stopAmbient(){
+    if(!ambient) return;
+    const {nodes,bus}=ambient;
+    if(ctx) bus.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.4);
+    setTimeout(()=>{ nodes.forEach(n=>{ try{n.stop();}catch(e){} }); }, 900);
+    ambient=null;
+  }
+
+  function chime(ok){
+    if(!ctx) return;
+    const notes = ok ? [523.25,659.25,783.99,1046.5] : [392,349.23,311.13];
+    notes.forEach((f,i)=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type='triangle'; o.frequency.value=f;
+      const start=ctx.currentTime+i*0.12;
+      g.gain.setValueAtTime(0.0001,start);
+      g.gain.exponentialRampToValueAtTime(0.15,start+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001,start+0.5);
+      o.connect(g); g.connect(master);
+      o.start(start); o.stop(start+0.55);
+    });
+  }
+
+  function playFile(src,vol,loop){
+    const a=new Audio(src);
+    a.volume = vol!==undefined ? vol : 0.85;
+    a.loop = !!loop;
+    a.muted = muted;
+    filePlayers.push(a);
+    a.addEventListener('ended', ()=>{ filePlayers=filePlayers.filter(x=>x!==a); });
+    a.play().catch(()=>{});
+    return a;
+  }
+
+  return {ensure,unlock,setMuted,isMuted,tick,doorSound,startAmbient,stopAmbient,chime,playFile};
+})();
+
+function mountAudioToggle(){
+  if(document.getElementById('audioToggle')) return;
+  const btn=document.createElement('button');
+  btn.id='audioToggle'; btn.className='audio-toggle'; btn.type='button';
+  function render(){
+    btn.textContent=SFX.isMuted()?'🔇':'🔊';
+    btn.setAttribute('aria-label',SFX.isMuted()?'Activează sunetul':'Dezactivează sunetul');
+  }
+  render();
+  btn.onclick=()=>{ SFX.setMuted(!SFX.isMuted()); render(); };
+  document.body.appendChild(btn);
+}
+mountAudioToggle();
 
 /* utilitar mic */
 function $(s){return document.querySelector(s);}
